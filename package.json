@@ -37,6 +37,7 @@
     "@tamagui/text": "^1.132.15",
     "ajv": "^8.17.1",
     "ajv-keywords": "^5.1.0",
+    "date-fns": "^4.1.0",
     "expo": "~53.0.23",
     "expo-blur": "~14.1.5",
     "expo-checkbox": "^4.1.4",

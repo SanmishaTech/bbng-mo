@@ -149,7 +149,7 @@ class DashboardService {
 
   async getChapterVisitorsCount(chapterId: number): Promise<number> {
     try {
-      console.log("DashboardService: Fetching chapter visitors count for ID:", chapterId);
+      console.log("DashboardService: Fetching chapter visitors count for ID:", chapterId);  
       const data = await get<StatisticsResponse>(
         `/api/statistics/chapter-visitors-count/${chapterId}`
       );

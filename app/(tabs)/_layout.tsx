@@ -55,20 +55,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="modules"
-        options={{
-          title: "Modules",
-          headerShown: false,
-          tabBarIcon: ({ color, focused }) => (
-            <IconSymbol
-              size={focused ? 30 : 26}
-              name="square.grid.2x2.fill"
-              color={color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="performance"
         options={{
           title: "Performance",

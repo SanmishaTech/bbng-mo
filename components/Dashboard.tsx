@@ -147,6 +147,12 @@ const loadDashboardData = async (isRefresh = false) => {
       case "one-to-one":
         router.push("/modules/onetoone");
         break;
+      case "visitors":
+        router.push("/modules/visitors" as any);
+        break;
+      case "meetings":
+        router.push("/modules/meetings" as any);
+        break;
       case "performance":
         router.push("/(tabs)/performance");
         break;
@@ -185,6 +191,22 @@ const loadDashboardData = async (isRefresh = false) => {
       icon: "person.2",
       color: colors.warning,
       onPress: () => handleQuickAction("one-to-one"),
+    },
+    {
+      id: "visitors",
+      title: "Visitors",
+      subtitle: "View visitors list",
+      icon: "person.3",
+      color: colors.info,
+      onPress: () => handleQuickAction("visitors"),
+    },
+    {
+      id: "meetings",
+      title: "Chapter Meetings",
+      subtitle: "Manage meetings",
+      icon: "calendar",
+      color: "#FF9500",
+      onPress: () => handleQuickAction("meetings"),
     },
     {
       id: "performance",

@@ -11,6 +11,14 @@ export default function ModulesLayout() {
         name="onetoone" 
         options={{ headerShown: false }} 
       />
+      <Stack.Screen 
+        name="meetings" 
+        options={{ headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="visitors" 
+        options={{ headerShown: false }} 
+      />
     </Stack>
   );
 }
