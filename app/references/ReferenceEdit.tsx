@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { View, TextInput, Button } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
+import React, { useState } from 'react';
+import { Button, TextInput } from 'react-native';
 
 export default function ReferenceEdit({ route, navigation }) {
   const [title, setTitle] = useState(''); // Initialize with existing data for editing

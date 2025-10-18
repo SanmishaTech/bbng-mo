@@ -1,7 +1,7 @@
 // API Configuration
 export const API_CONFIG = {
   // Base URL for your API - update this to your actual API endpoint
-  BASE_URL: process.env.EXPO_PUBLIC_API_URL || "http://47.128.201.96",
+  BASE_URL: process.env.EXPO_PUBLIC_API_URL || "https://bbng.3.7.237.251.sslip.io",
 
   // API Endpoints
   ENDPOINTS: {

@@ -69,6 +69,20 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="performance"
+        options={{
+          title: "Performance",
+          headerShown: false,
+          tabBarIcon: ({ color, focused }) => (
+            <IconSymbol
+              size={focused ? 30 : 26}
+              name="chart.bar.fill"
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
@@ -91,20 +105,6 @@ export default function TabLayout() {
             <IconSymbol
               size={focused ? 30 : 26}
               name="person.badge.plus"
-              color={color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="done-deals"
-        options={{
-          title: "Done Deals",
-          headerShown: false,
-          tabBarIcon: ({ color, focused }) => (
-            <IconSymbol
-              size={focused ? 30 : 26}
-              name="dollarsign.circle"
               color={color}
             />
           ),

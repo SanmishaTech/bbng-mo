@@ -44,6 +44,13 @@ class ApiService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        
+        // If unauthorized, clear the invalid token
+        if (response.status === 401) {
+          console.warn('ApiService: 401 Unauthorized - clearing invalid token');
+          await AsyncStorage.removeItem('auth_token').catch(() => {});
+        }
+        
         throw {
           message:
             errorData.message ||

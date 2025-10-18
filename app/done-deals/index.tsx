@@ -52,7 +52,7 @@ export default function DoneDealsIndex() {
 
   const loadGivenDeals = async () => {
     try {
-      const data = await apiService.get<any>("/api/thankyou-slips?limit=100");
+      const data = await apiService.get<any>("/api/thankyou-slips/given?page=1&limit=100");
 
       if (data && Array.isArray(data.data?.thankYouSlips)) {
         setGivenDeals(data.data?.thankYouSlips);
@@ -131,7 +131,7 @@ export default function DoneDealsIndex() {
     }
   );
 
-  const renderDoneDeal = ({ item }: { item: DoneDeal }) => {
+  function renderDoneDeal({ item }: { item: DoneDeal }) {
     const isGiven = activeTab === 'given';
     const personLabel = isGiven ? 'To' : 'Chapter';
     
@@ -183,7 +183,7 @@ export default function DoneDealsIndex() {
         )}
       </TouchableOpacity>
     );
-  };
+  }
 
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>

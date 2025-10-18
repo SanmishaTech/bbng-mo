@@ -38,6 +38,7 @@ interface ApiReference {
   addressLine2?: string;
   location?: string;
   pincode?: string;
+  status?: string;
   // Additional fields that might come from API
   chapter?: { name: string };
   member?: { memberName: string };
@@ -59,6 +60,7 @@ interface Reference {
   notes: string;
   dateAdded: string;
   urgency?: string;
+  status?: string;
 }
 
 export default function ReferencesIndex() {
@@ -92,6 +94,7 @@ export default function ReferencesIndex() {
       notes: apiRef.remarks || '',
       dateAdded: apiRef.date,
       urgency: apiRef.urgency,
+      status: apiRef.status || 'pending',
     };
   };
 
@@ -106,14 +109,27 @@ export default function ReferencesIndex() {
         console.log('Fetching references from API...');
         
         let allReferences: ApiReference[] = [];
-        const memberId = 3; // TODO: Get from user context/auth
-        const limit = 50; // Load more per request
         
-        // Fetch given references
-        const givenResponse = await apiService.get<any>(`/api/references/given?memberId=${memberId}&page=1&limit=${limit}&search=${searchQuery}`);
+        // Get current user's memberId from AsyncStorage
+        const userData = await AsyncStorage.getItem('user_data');
+        let memberId = null;
+        if (userData) {
+          try {
+            const parsedUser = JSON.parse(userData);
+            memberId = parsedUser?.member?.id || parsedUser?.memberId;
+            console.log('Retrieved memberId from user data:', memberId);
+          } catch (e) {
+            console.error('Error parsing user data:', e);
+          }
+        }
+        
+        const limit = 50; // References per page
+        
+        // Fetch given references - use self=false, don't pass memberId
+        const givenResponse = await apiService.get<any>(`/api/references/given?page=1&limit=${limit}&search=${searchQuery}&self=false`);
         console.log('Given References API Response:', JSON.stringify(givenResponse, null, 2));
         
-        // Fetch received references
+        // Fetch received references - pass memberId
         const receivedResponse = await apiService.get<any>(`/api/references/received?memberId=${memberId}&page=1&limit=${limit}&search=${searchQuery}`);
         console.log('Received References API Response:', JSON.stringify(receivedResponse, null, 2));
         
@@ -224,51 +240,94 @@ export default function ReferencesIndex() {
     return matchesSearch && matchesTab;
   });
 
-  const renderReference = ({ item }: { item: Reference }) => (
-    <TouchableOpacity
-      style={[styles.referenceCard, { backgroundColor: cardColor, borderColor: colors.border }]}
-      onPress={() => router.push(`/references/detail?id=${item.id}`)}
-    >
-      <View style={styles.referenceHeader}>
-        <ThemedText type="defaultSemiBold" style={styles.referenceTitle}>
-          {item.title}
-        </ThemedText>
-        <View style={[
-          styles.typeBadge,
-          { backgroundColor: item.type === 'given' ? colors.success : colors.info }
-        ]}>
-          <ThemedText style={[styles.typeBadgeText, { color: 'white' }]}>
-            {item.type.toUpperCase()}
-          </ThemedText>
-        </View>
-      </View>
-      <ThemedText style={styles.referenceCompany}>{item.company}</ThemedText>
-      <ThemedText style={styles.referenceContact}>{item.contact}</ThemedText>
-      <ThemedText style={styles.referenceDate}>
-        Added: {new Date(item.dateAdded).toLocaleDateString()}
-      </ThemedText>
-    </TouchableOpacity>
-  );
+  // Format status display name
+  const formatStatusDisplay = (status?: string) => {
+    if (!status) return 'PENDING';
+    const lowerStatus = status.toLowerCase();
+    if (lowerStatus === 'business done') {
+      return 'MARK DONE DEAL';
+    }
+    return status.toUpperCase();
+  };
 
-  const renderTabButton = (tab: 'all' | 'given' | 'received', title: string) => (
-    <TouchableOpacity
-      style={[
-        styles.tabButton,
-        selectedTab === tab && { backgroundColor: colors.primary },
-        { borderColor: colors.border }
-      ]}
-      onPress={() => setSelectedTab(tab)}
-    >
-      <ThemedText
-        style={[
-          styles.tabButtonText,
-          selectedTab === tab && { color: 'white' }
-        ]}
+  // Get status badge color
+  const getStatusColor = (status?: string) => {
+    if (!status) return colors.warning;
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return colors.warning;
+      case 'contacted':
+        return colors.info;
+      case 'business done':
+        return colors.success;
+      case 'rejected':
+        return colors.error;
+      default:
+        return colors.primary;
+    }
+  };
+
+  function renderReference({ item }: { item: Reference }) {
+    const statusColor = getStatusColor(item.status);
+    
+    return (
+      <TouchableOpacity
+        style={[styles.referenceCard, { backgroundColor: cardColor, borderColor: colors.border }]}
+        onPress={() => router.push(`/references/detail?id=${item.id}`)}
       >
-        {title}
-      </ThemedText>
-    </TouchableOpacity>
-  );
+        <View style={styles.referenceHeader}>
+          <ThemedText type="defaultSemiBold" style={styles.referenceTitle}>
+            {item.title}
+          </ThemedText>
+          <View style={styles.badgeContainer}>
+            <View style={[
+              styles.typeBadge,
+              { backgroundColor: item.type === 'given' ? colors.success : colors.info }
+            ]}>
+              <ThemedText style={[styles.typeBadgeText, { color: 'white' }]}>
+                {item.type.toUpperCase()}
+              </ThemedText>
+            </View>
+          </View>
+        </View>
+        <View style={styles.statusRow}>
+          <View style={[styles.statusBadge, { backgroundColor: statusColor + '20', borderColor: statusColor }]}>
+            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+            <ThemedText style={[styles.statusText, { color: statusColor }]}>
+              {formatStatusDisplay(item.status)}
+            </ThemedText>
+          </View>
+        </View>
+        <ThemedText style={styles.referenceCompany}>{item.company}</ThemedText>
+        <ThemedText style={styles.referenceContact}>{item.contact}</ThemedText>
+        <ThemedText style={styles.referenceDate}>
+          Added: {new Date(item.dateAdded).toLocaleDateString()}
+        </ThemedText>
+      </TouchableOpacity>
+    );
+  }
+
+  function renderTabButton(tab: 'all' | 'given' | 'received', title: string) {
+    return (
+      <TouchableOpacity
+        style={[
+          styles.tabButton,
+          selectedTab === tab && { backgroundColor: colors.primary },
+          { borderColor: colors.border }
+        ]}
+        onPress={() => setSelectedTab(tab)}
+      >
+        <ThemedText
+          style={[
+            styles.tabButtonText,
+            selectedTab === tab && { color: 'white' }
+          ]}
+        >
+          {title}
+        </ThemedText>
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>
@@ -348,9 +407,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     margin: 16,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   searchInput: {
     flex: 1,
@@ -366,10 +430,11 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
+    borderRadius: 20,
+    borderWidth: 0,
     marginHorizontal: 4,
     alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.05)',
   },
   tabButtonText: {
     fontSize: 14,
@@ -380,10 +445,15 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   referenceCard: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
+    padding: 18,
+    borderRadius: 20,
+    marginBottom: 16,
+    borderWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   referenceHeader: {
     flexDirection: 'row',
@@ -394,29 +464,61 @@ const styles = StyleSheet.create({
   referenceTitle: {
     flex: 1,
     marginRight: 12,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  badgeContainer: {
+    flexDirection: 'row',
+    gap: 6,
   },
   typeBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   typeBadgeText: {
-    fontSize: 10,
-    fontWeight: 'bold',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  statusRow: {
+    marginBottom: 10,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 6,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   referenceCompany: {
-    fontSize: 14,
-    marginBottom: 4,
-    opacity: 0.8,
+    fontSize: 15,
+    marginBottom: 6,
+    fontWeight: '600',
+    opacity: 0.75,
   },
   referenceContact: {
     fontSize: 14,
-    marginBottom: 4,
-    opacity: 0.7,
+    marginBottom: 6,
+    opacity: 0.65,
   },
   referenceDate: {
-    fontSize: 12,
-    opacity: 0.6,
+    fontSize: 13,
+    opacity: 0.5,
+    fontWeight: '500',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -424,29 +526,30 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
   },
   emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     marginTop: 16,
     marginBottom: 8,
+    letterSpacing: 0.3,
   },
   emptySubtext: {
-    fontSize: 14,
-    opacity: 0.7,
+    fontSize: 15,
+    opacity: 0.6,
     textAlign: 'center',
   },
   addButton: {
     position: 'absolute',
     bottom: 30,
     right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
   },
 });

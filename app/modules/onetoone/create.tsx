@@ -149,6 +149,8 @@ export default function OneToOneFormScreen() {
     loadMembers();
   }, [formData.chapterId]);
 
+  const backgroundColor = useThemeColor({}, 'background');
+
   const onSubmit = async () => {
     if (!validate()) {
       Toast.show({
@@ -188,7 +190,7 @@ export default function OneToOneFormScreen() {
     }
   };
 
-  const PickerModal = ({
+  function PickerModal({
     visible,
     title,
     data,
@@ -208,7 +210,8 @@ export default function OneToOneFormScreen() {
     onClose: () => void;
     loading?: boolean;
     emptyText?: string;
-  }) => (
+  }) {
+    return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
         <View style={[styles.modalSheet, { backgroundColor: colors.card }]}>
@@ -250,7 +253,8 @@ export default function OneToOneFormScreen() {
         </View>
       </View>
     </Modal>
-  );
+    );
+  }
 
   if (loading) {
     return (
@@ -266,8 +270,6 @@ export default function OneToOneFormScreen() {
       </ThemedView>
     );
   }
-
-  const backgroundColor = useThemeColor({}, 'background');
 
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>
@@ -497,8 +499,34 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+  },
+  flex: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+  },
+  formCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 16,
+  },
+  formHeader: {
+    marginBottom: 16,
+  },
+  formTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  formSubtitle: {
+    fontSize: 14,
+  },
+  formSection: {
+    marginBottom: 16,
   },
   card: {
     borderRadius: 14,
@@ -538,8 +566,10 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   label: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
+    color: '#1a1a1a',
+    letterSpacing: 0.2,
   },
   req: {
     color: '#F44336',
@@ -549,33 +579,77 @@ const styles = StyleSheet.create({
   },
 
   selectBox: {
-    height: 46,
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 12,
+    height: 54,
+    borderRadius: 16,
+    borderWidth: 0,
+    paddingHorizontal: 18,
     justifyContent: 'center',
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   selectText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '500',
+    color: '#1a1a1a',
   },
 
   textarea: {
-    minHeight: 110,
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
+    minHeight: 120,
+    borderRadius: 16,
+    borderWidth: 0,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    fontSize: 16,
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
 
   footer: {
     borderTopWidth: 1,
     padding: 12,
     paddingHorizontal: 16,
-    marginTop: 8,
     flexDirection: 'row',
     gap: 10,
+  },
+  cancelButton: {
+    flex: 1,
+    height: 54,
+    borderWidth: 0,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 123, 255, 0.08)',
+  },
+  cancelButtonText: {
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  scheduleButton: {
+    flex: 1,
+    height: 54,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  scheduleButtonText: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 17,
+    letterSpacing: 0.5,
   },
   outlineBtn: {
     flex: 1,
@@ -615,26 +689,35 @@ const styles = StyleSheet.create({
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
   },
   modalSheet: {
-    maxHeight: '70%',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    maxHeight: '75%',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
   },
   modalHeader: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 10,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   modalTitle: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '800',
+    color: '#1a1a1a',
+    letterSpacing: 0.3,
   },
   modalClose: {
     paddingHorizontal: 8,
@@ -648,13 +731,17 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   optionItem: {
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    borderRadius: 0,
+    backgroundColor: 'white',
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
   optionLabel: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '500',
+    color: '#1a1a1a',
   },
   separator: {
     height: 1,

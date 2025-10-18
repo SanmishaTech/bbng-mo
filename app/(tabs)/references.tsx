@@ -102,51 +102,55 @@ export default function ReferencesTab() {
     router.push('/references/add');
   };
 
-  const renderReference = ({ item }: { item: Reference }) => (
-    <TouchableOpacity
-      style={[styles.referenceCard, { backgroundColor: cardColor, borderColor: colors.border }]}
-      onPress={() => handleReferencePress(item)}
-    >
-      <View style={styles.referenceHeader}>
-        <ThemedText type="defaultSemiBold" style={styles.referenceTitle}>
-          {item.title}
-        </ThemedText>
-        <View style={[
-          styles.typeBadge,
-          { backgroundColor: item.type === 'given' ? colors.success : colors.info }
-        ]}>
-          <ThemedText style={[styles.typeBadgeText, { color: 'white' }]}>
-            {item.type.toUpperCase()}
-          </ThemedText>
-        </View>
-      </View>
-      <ThemedText style={styles.referenceCompany}>{item.company}</ThemedText>
-      <ThemedText style={styles.referenceContact}>{item.contact}</ThemedText>
-      <ThemedText style={styles.referenceDate}>
-        Added: {new Date(item.dateAdded).toLocaleDateString()}
-      </ThemedText>
-    </TouchableOpacity>
-  );
-
-  const renderTabButton = (tab: 'all' | 'given' | 'received', title: string) => (
-    <TouchableOpacity
-      style={[
-        styles.tabButton,
-        selectedTab === tab && { backgroundColor: colors.primary },
-        { borderColor: colors.border }
-      ]}
-      onPress={() => setSelectedTab(tab)}
-    >
-      <ThemedText
-        style={[
-          styles.tabButtonText,
-          selectedTab === tab && { color: 'white' }
-        ]}
+  function renderReference({ item }: { item: Reference }) {
+    return (
+      <TouchableOpacity
+        style={[styles.referenceCard, { backgroundColor: cardColor, borderColor: colors.border }]}
+        onPress={() => handleReferencePress(item)}
       >
-        {title}
-      </ThemedText>
-    </TouchableOpacity>
-  );
+        <View style={styles.referenceHeader}>
+          <ThemedText type="defaultSemiBold" style={styles.referenceTitle}>
+            {item.title}
+          </ThemedText>
+          <View style={[
+            styles.typeBadge,
+            { backgroundColor: item.type === 'given' ? colors.success : colors.info }
+          ]}>
+            <ThemedText style={[styles.typeBadgeText, { color: 'white' }]}>
+              {item.type.toUpperCase()}
+            </ThemedText>
+          </View>
+        </View>
+        <ThemedText style={styles.referenceCompany}>{item.company}</ThemedText>
+        <ThemedText style={styles.referenceContact}>{item.contact}</ThemedText>
+        <ThemedText style={styles.referenceDate}>
+          Added: {new Date(item.dateAdded).toLocaleDateString()}
+        </ThemedText>
+      </TouchableOpacity>
+    );
+  }
+
+  function renderTabButton(tab: 'all' | 'given' | 'received', title: string) {
+    return (
+      <TouchableOpacity
+        style={[
+          styles.tabButton,
+          selectedTab === tab && { backgroundColor: colors.primary },
+          { borderColor: colors.border }
+        ]}
+        onPress={() => setSelectedTab(tab)}
+      >
+        <ThemedText
+          style={[
+            styles.tabButtonText,
+            selectedTab === tab && { color: 'white' }
+          ]}
+        >
+          {title}
+        </ThemedText>
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>

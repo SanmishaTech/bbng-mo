@@ -2,13 +2,13 @@ import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { dashboardService } from "@/services/dashboardService";
 import {
   ChapterMeeting,
   Message,
   Training,
   UpcomingBirthday,
 } from "@/types/dashboard";
-import { dashboardService } from "@/services/dashboardService";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -23,6 +23,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Pressable,
 } from "react-native";
 
 const { width } = Dimensions.get("window");
@@ -98,9 +99,24 @@ const loadDashboardData = async (isRefresh = false) => {
       console.log("Dashboard: State updated successfully");
       console.log("Dashboard: Final state - Business Total:", data.businessTotal);
       console.log("Dashboard: Final state - Messages count:", data.messages.length);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading dashboard data:", error);
-      Alert.alert("Error", "Failed to load dashboard data. Please try again.");
+      
+      // Handle authentication errors
+      if (error?.status === 401) {
+        Alert.alert(
+          "Session Expired",
+          "Your session has expired. Please log in again.",
+          [
+            {
+              text: "OK",
+              onPress: () => signOut(),
+            },
+          ]
+        );
+      } else {
+        Alert.alert("Error", "Failed to load dashboard data. Please try again.");
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -130,6 +146,9 @@ const loadDashboardData = async (isRefresh = false) => {
         break;
       case "one-to-one":
         router.push("/modules/onetoone");
+        break;
+      case "performance":
+        router.push("/(tabs)/performance");
         break;
       default:
         console.log(`${action} pressed`);
@@ -166,6 +185,14 @@ const loadDashboardData = async (isRefresh = false) => {
       icon: "person.2",
       color: colors.warning,
       onPress: () => handleQuickAction("one-to-one"),
+    },
+    {
+      id: "performance",
+      title: "Performance Dashboard",
+      subtitle: "View analytics",
+      icon: "chart.bar.fill",
+      color: "#AF52DE",
+      onPress: () => handleQuickAction("performance"),
     },
   ];
 
@@ -306,6 +333,7 @@ const loadDashboardData = async (isRefresh = false) => {
             icon="person.3"
             color={colors.info}
             colors={colors}
+            onPress={() => router.push('/modules/visitors' as any)}
           />
         </View>
 
@@ -347,6 +375,7 @@ const loadDashboardData = async (isRefresh = false) => {
                 icon="person.3"
                 color={colors.info}
                 colors={colors}
+                onPress={() => router.push('/modules/visitors' as any)}
               />
             </View>
 
@@ -646,18 +675,31 @@ const loadDashboardData = async (isRefresh = false) => {
 }
 
 // StatCard Component
-const StatCard = ({ title, value, icon, color, colors }: any) => (
-  <View
-    style={[
+const StatCard = ({ title, value, icon, color, colors, onPress }: any) => (
+  <Pressable
+    style={({ pressed }) => [
       styles.statCard,
       { backgroundColor: colors.card, borderColor: colors.border },
+      pressed && styles.statCardPressed,
     ]}
+    android_ripple={{ color: color + "22" }}
+    accessibilityRole="button"
+    accessibilityLabel={`${title}: ${value}`}
+    onPress={onPress}
+    disabled={!onPress}
   >
-    <View style={[styles.statIconContainer, { backgroundColor: color + "20" }]}>
-      <IconSymbol name={icon} size={20} color={color} />
-    </View>
+    <LinearGradient
+      colors={[color + "33", color + "14"]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.statIconContainer}
+    >
+      <IconSymbol name={icon} size={24} color={color} />
+    </LinearGradient>
     <View style={styles.statInfo}>
-      <Text style={[styles.statValue, { color: colors.text }]}>{value}</Text>
+      <Text style={[styles.statValue, { color: colors.text }]} numberOfLines={1}>
+        {value}
+      </Text>
       <Text
         style={[styles.statLabel, { color: colors.placeholder }]}
         numberOfLines={2}
@@ -665,7 +707,7 @@ const StatCard = ({ title, value, icon, color, colors }: any) => (
         {title}
       </Text>
     </View>
-  </View>
+  </Pressable>
 );
 
 const styles = StyleSheet.create({
@@ -682,10 +724,15 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingTop: 60,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    paddingBottom: 40,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   headerContent: {
     flexDirection: "row",
@@ -696,46 +743,52 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   welcomeText: {
-    fontSize: 16,
-    color: "rgba(255, 255, 255, 0.8)",
-    marginBottom: 4,
+    fontSize: 15,
+    color: "rgba(255, 255, 255, 0.85)",
+    marginBottom: 6,
+    fontWeight: "500",
   },
   userName: {
-    fontSize: 28,
-    fontWeight: "bold",
+    fontSize: 32,
+    fontWeight: "800",
     color: "white",
-    marginBottom: 8,
+    marginBottom: 10,
+    letterSpacing: 0.5,
   },
   subtitle: {
-    fontSize: 14,
-    color: "rgba(255, 255, 255, 0.7)",
+    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.75)",
+    fontWeight: "400",
   },
   signOutButton: {
-    padding: 10,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    padding: 12,
+    borderRadius: 24,
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
   },
   content: {
     padding: 20,
+    marginTop: -20,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
+    fontSize: 22,
+    fontWeight: "800",
     marginBottom: 16,
     marginTop: 8,
+    letterSpacing: 0.3,
   },
   sectionHeader: {
     marginBottom: 16,
-    marginTop: 20,
+    marginTop: 28,
   },
   sectionBadge: {
-    fontSize: 12,
-    fontWeight: "bold",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    fontSize: 11,
+    fontWeight: "800",
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
     alignSelf: "flex-start",
     color: "white",
+    letterSpacing: 1,
   },
   bbngBadge: {
     backgroundColor: "#007AFF",
@@ -750,7 +803,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    marginBottom: 30,
+    marginBottom: 24,
+    marginHorizontal: -6,
   },
   statsGrid: {
     flexDirection: "row",
@@ -759,25 +813,32 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   actionCard: {
-    width: width * 0.42,
+    width: (width - 52) / 2,
     padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: 20,
+    borderWidth: 0,
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 12,
+    marginHorizontal: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 4,
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 6,
+    textAlign: "center",
   },
   cardSubtitle: {
     fontSize: 12,
@@ -789,33 +850,48 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   statCard: {
-    width: width * 0.42,
-    flexDirection: "row",
-    padding: 16,
-    borderRadius: 12,
+    width: '48%', // 2 columns
+    flexDirection: 'column',
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    marginBottom: 14,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 3,
     borderWidth: 1,
-    marginBottom: 12,
-    marginHorizontal: 4,
-    alignItems: "center",
+    minHeight: 128,
   },
   statIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   statInfo: {
-    flex: 1,
+    alignItems: 'center',
   },
   statValue: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 2,
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 6,
+    textAlign: 'center',
   },
   statLabel: {
-    fontSize: 10,
+    fontSize: 11,
+    lineHeight: 14,
+    textAlign: 'center',
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  statCardPressed: {
+    transform: [{ scale: 0.98 }],
   },
   twoColumnSection: {
     flexDirection: "column",
@@ -827,22 +903,29 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 300,
     marginBottom: 20,
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 16,
+    borderRadius: 20,
+    borderWidth: 0,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   cardHeader: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 12,
+    fontSize: 17,
+    fontWeight: "700",
+    marginBottom: 16,
+    letterSpacing: 0.2,
   },
   scrollableContent: {
     flex: 1,
   },
   messageItem: {
-    paddingBottom: 12,
-    marginBottom: 12,
-    borderBottomWidth: 1,
+    paddingBottom: 16,
+    marginBottom: 16,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "rgba(0,0,0,0.05)",
   },
   messageHeader: {
     flexDirection: "row",
@@ -851,21 +934,25 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   messageTitle: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 15,
+    fontWeight: "700",
     flex: 1,
     marginRight: 8,
+    lineHeight: 20,
   },
   messageDate: {
-    fontSize: 10,
+    fontSize: 11,
+    fontWeight: "500",
   },
   messagePowerteam: {
-    fontSize: 12,
-    marginBottom: 4,
+    fontSize: 13,
+    marginBottom: 6,
+    fontWeight: "500",
   },
   messageContent: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 18,
+    opacity: 0.85,
   },
   attachmentLink: {
     fontSize: 12,

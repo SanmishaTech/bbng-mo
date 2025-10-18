@@ -66,6 +66,16 @@ const MAPPING = {
   'doc.text': 'description',
   'person': 'person',
   'dollarsign.circle': 'monetization-on',
+  'chart.bar.fill': 'bar-chart',
+  'arrow.up.circle.fill': 'arrow-circle-up',
+  'arrow.down.circle.fill': 'arrow-circle-down',
+  'person.2.fill': 'people',
+  'person.3.fill': 'groups',
+  'hand.raised.fill': 'front-hand',
+  'info.circle': 'info-outline',
+  'arrow.up': 'arrow-upward',
+  'arrow.down': 'arrow-downward',
+  'slider.horizontal.3': 'tune',
 } as IconMapping;
 
 /**

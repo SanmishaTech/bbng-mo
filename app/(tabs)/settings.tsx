@@ -84,40 +84,42 @@ export default function SettingsScreen() {
     },
   ];
 
-  const renderSettingItem = (item: SettingItem) => (
-    <View
-      key={item.id}
-      style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}
-    >
-      <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
-        <IconSymbol name={item.icon as any} size={20} color={colors.primary} />
-      </View>
-      
-      <View style={styles.settingContent}>
-        <Text style={[styles.settingTitle, { color: colors.text }]}>
-          {item.title}
-        </Text>
-        {item.subtitle && (
-          <Text style={[styles.settingSubtitle, { color: colors.placeholder }]}>
-            {item.subtitle}
+  function renderSettingItem(item: SettingItem) {
+    return (
+      <View
+        key={item.id}
+        style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}
+      >
+        <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
+          <IconSymbol name={item.icon as any} size={20} color={colors.primary} />
+        </View>
+        
+        <View style={styles.settingContent}>
+          <Text style={[styles.settingTitle, { color: colors.text }]}>
+            {item.title}
           </Text>
+          {item.subtitle && (
+            <Text style={[styles.settingSubtitle, { color: colors.placeholder }]}>
+              {item.subtitle}
+            </Text>
+          )}
+        </View>
+
+        {item.type === 'toggle' ? (
+          <Switch
+            value={item.value}
+            onValueChange={item.onToggle}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor="white"
+          />
+        ) : (
+          <TouchableOpacity onPress={item.onPress} style={styles.navigationButton}>
+            <IconSymbol name="chevron.right" size={16} color={colors.placeholder} />
+          </TouchableOpacity>
         )}
       </View>
-
-      {item.type === 'toggle' ? (
-        <Switch
-          value={item.value}
-          onValueChange={item.onToggle}
-          trackColor={{ false: colors.border, true: colors.primary }}
-          thumbColor="white"
-        />
-      ) : (
-        <TouchableOpacity onPress={item.onPress} style={styles.navigationButton}>
-          <IconSymbol name="chevron.right" size={16} color={colors.placeholder} />
-        </TouchableOpacity>
-      )}
-    </View>
-  );
+    );
+  }
 
   return (
     <ScrollView

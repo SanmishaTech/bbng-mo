@@ -50,17 +50,19 @@ export default function ChaptersScreen() {
     }
   };
 
-  const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <IconSymbol name="book.closed" size={64} color={colors.placeholder} />
-      <Text style={[styles.emptyStateTitle, { color: colors.text }]}>No Chapters Yet</Text>
-      <Text style={[styles.emptyStateSubtitle, { color: colors.placeholder }]}>
-        Tap the + button below to add your first chapter
-      </Text>
-    </View>
-  );
+  function renderEmptyState() {
+    return (
+      <View style={styles.emptyState}>
+        <IconSymbol name="book.closed" size={64} color={colors.placeholder} />
+        <Text style={[styles.emptyStateTitle, { color: colors.text }]}>No Chapters Yet</Text>
+        <Text style={[styles.emptyStateSubtitle, { color: colors.placeholder }]}>
+          Tap the + button below to add your first chapter
+        </Text>
+      </View>
+    );
+  }
 
-  const renderItem = ({ item }: { item: Chapter }) => {
+  function renderItem({ item }: { item: Chapter }) {
     if (!animatedValues[item.id]) {
       animatedValues[item.id] = new Animated.Value(0);
     }
@@ -257,26 +259,28 @@ const styles = StyleSheet.create({
   },
   chapterItem: {
     padding: 20,
-    borderRadius: 15,
-    borderWidth: 1,
+    borderRadius: 20,
+    borderWidth: 0,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   chapterName: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '800',
     flex: 1,
+    letterSpacing: 0.3,
   },
   chapterDescription: {
-    fontSize: 14,
-    marginTop: 8,
-    lineHeight: 20,
+    fontSize: 15,
+    marginTop: 10,
+    lineHeight: 22,
+    opacity: 0.8,
   },
   addButton: {
     position: 'absolute',
@@ -299,35 +303,41 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
   },
   modalView: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
     paddingBottom: 40,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: -2,
+      height: -4,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
   },
   modalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '800',
     flex: 1,
+    letterSpacing: 0.3,
   },
   input: {
-    height: 56,
-    borderWidth: 2,
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    height: 54,
+    borderWidth: 0,
+    borderRadius: 16,
+    paddingHorizontal: 18,
     fontSize: 16,
     marginBottom: 15,
     fontWeight: '500',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -337,17 +347,23 @@ const styles = StyleSheet.create({
   },
   button: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   cancelButton: {
     marginRight: 5,
   },
   buttonText: {
     color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   emptyState: {
     flex: 1,
@@ -357,10 +373,11 @@ const styles = StyleSheet.create({
     paddingTop: 100,
   },
   emptyStateTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '800',
     marginTop: 20,
     marginBottom: 10,
+    letterSpacing: 0.3,
   },
   emptyStateSubtitle: {
     fontSize: 16,

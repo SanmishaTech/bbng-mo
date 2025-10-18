@@ -9,13 +9,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Alert,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    FlatList,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Toast from "react-native-toast-message";
 
@@ -115,7 +115,7 @@ export default function OneToOneListScreen() {
     action: "accepted" | "cancelled"
   ) => {
     try {
-      await patch(`http://47.128.201.96/api/one-to-ones/${id}/status`, {
+      await patch(`/api/one-to-ones/${id}/status`, {
         status: action,
       });
       Toast.show({
@@ -315,7 +315,7 @@ export default function OneToOneListScreen() {
     </View>
   );
 
-  const renderItem = ({ item }: { item: OneToOne }) => {
+  function renderItem({ item }: { item: OneToOne }) {
     const statusStyle = getStatusStyle(item.status);
     return (
       <View
@@ -419,15 +419,14 @@ export default function OneToOneListScreen() {
         )}
       </View>
     );
-  };
+  }
 
   const currentData =
     activeTab === "scheduled" ? scheduledMeetings : receivedMeetings;
 
   const handleTabSwitch = (tab: "scheduled" | "received") => {
     setActiveTab(tab);
-    // Refresh data when switching tabs to ensure fresh content
-    loadOneToOnes();
+    // Data is already loaded for both tabs, no need to refresh
   };
 
   const TabButton = ({
@@ -555,14 +554,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   addButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
   addButtonText: {
     color: "white",
-    fontWeight: "600",
-    fontSize: 14,
+    fontWeight: "700",
+    fontSize: 15,
+    letterSpacing: 0.3,
   },
   headerContainer: {
     paddingHorizontal: 16,
@@ -603,14 +608,15 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
+    marginBottom: 16,
+    padding: 18,
+    borderRadius: 20,
+    borderWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 2,
+    shadowRadius: 8,
+    elevation: 3,
   },
   cardHeader: {
     flexDirection: "row",
@@ -619,19 +625,20 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "800",
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
 
   statusPill: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 999,
+    borderRadius: 16,
   },
   statusPillText: {
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.5,
   },
 
   row: {
@@ -679,11 +686,15 @@ const styles = StyleSheet.create({
   },
 
   remarksBox: {
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    marginTop: 16,
+    padding: 18,
+    borderRadius: 20,
+    borderWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   remarksLabel: {
     fontSize: 12,
@@ -704,9 +715,14 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: 13,
+    borderRadius: 14,
     alignItems: "center",
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
   primaryBtnText: {
     color: "white",
@@ -715,12 +731,11 @@ const styles = StyleSheet.create({
   },
   ghostDangerBtn: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: 13,
+    borderRadius: 14,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#F44336",
-    backgroundColor: "transparent",
+    borderWidth: 0,
+    backgroundColor: "rgba(244, 67, 54, 0.1)",
   },
   ghostDangerText: {
     color: "#F44336",
@@ -736,21 +751,29 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   emptyStateTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "800",
     textAlign: "center",
+    letterSpacing: 0.3,
   },
   emptyStateText: {
-    fontSize: 14,
+    fontSize: 15,
     textAlign: "center",
     marginBottom: 8,
+    opacity: 0.7,
+    lineHeight: 22,
   },
   createButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 16,
     alignItems: "center",
     marginTop: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   createButtonText: {
     color: "white",
@@ -818,9 +841,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 20,
     marginHorizontal: 4,
     alignItems: "center",
+    backgroundColor: 'rgba(0,0,0,0.05)',
   },
   tabButtonText: {
     fontSize: 14,

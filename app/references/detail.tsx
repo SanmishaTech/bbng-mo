@@ -1,23 +1,25 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  ScrollView,
-  ActivityIndicator,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-} from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { NavigationHeader } from '@/components/NavigationHeader';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { useThemeColor } from '@/hooks/useThemeColor';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useThemeColor } from '@/hooks/useThemeColor';
 import { apiService } from '@/services/apiService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import Toast from 'react-native-toast-message';
-import { NavigationHeader } from '@/components/NavigationHeader';
 
 // Updated interface to match the actual API data structure
 interface ReferenceDetail {
@@ -84,6 +86,10 @@ export default function ReferenceDetailScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [reference, setReference] = useState<ReferenceDetail | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [isReceived, setIsReceived] = useState(false);
+  const [isGiven, setIsGiven] = useState(false);
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   
@@ -95,6 +101,20 @@ export default function ReferenceDetailScreen() {
     const fetchReferenceDetail = async () => {
       try {
         console.log('Fetching reference detail for ID:', id);
+        
+        // Get current user's memberId
+        const userData = await AsyncStorage.getItem('user_data');
+        let memberId = null;
+        if (userData) {
+          try {
+            const parsedUser = JSON.parse(userData);
+            memberId = parsedUser?.member?.id || parsedUser?.memberId;
+            setCurrentUserId(memberId);
+            console.log('Current user memberId:', memberId);
+          } catch (e) {
+            console.error('Error parsing user data:', e);
+          }
+        }
         
         // First try to get from API
         try {
@@ -110,7 +130,21 @@ export default function ReferenceDetailScreen() {
           }
           
           console.log('Extracted reference detail data:', JSON.stringify(data, null, 2));
+          console.log('Status History:', data.statusHistory);
           setReference(data);
+          
+          // Determine if this is a received or given reference
+          if (data.receiverId === memberId) {
+            console.log('This is a RECEIVED reference');
+            setIsReceived(true);
+            setIsGiven(false);
+          } else if (data.giverId === memberId) {
+            console.log('This is a GIVEN reference');
+            setIsReceived(false);
+            setIsGiven(true);
+          } else {
+            console.log('User is neither giver nor receiver');
+          }
         } catch (apiError) {
           console.log('API fetch failed, trying cached data...', apiError);
           
@@ -123,6 +157,14 @@ export default function ReferenceDetailScreen() {
             if (foundReference) {
               console.log('Found reference in API cache:', JSON.stringify(foundReference, null, 2));
               setReference(foundReference);
+              // Set isReceived/isGiven flags
+              if (foundReference.receiverId === memberId) {
+                setIsReceived(true);
+                setIsGiven(false);
+              } else if (foundReference.giverId === memberId) {
+                setIsReceived(false);
+                setIsGiven(true);
+              }
               return;
             }
           }
@@ -136,6 +178,14 @@ export default function ReferenceDetailScreen() {
             if (foundReference) {
               console.log('Found reference in cache:', JSON.stringify(foundReference, null, 2));
               setReference(foundReference);
+              // Set isReceived/isGiven flags
+              if (foundReference.receiverId === memberId) {
+                setIsReceived(true);
+                setIsGiven(false);
+              } else if (foundReference.giverId === memberId) {
+                setIsReceived(false);
+                setIsGiven(true);
+              }
               return;
             }
           }
@@ -149,6 +199,20 @@ export default function ReferenceDetailScreen() {
             if (foundReference) {
               console.log('Found reference in legacy storage:', JSON.stringify(foundReference, null, 2));
               setReference(foundReference);
+              // Set isReceived/isGiven flags for legacy data
+              if (foundReference.type === 'received') {
+                setIsReceived(true);
+                setIsGiven(false);
+              } else if (foundReference.type === 'given') {
+                setIsReceived(false);
+                setIsGiven(true);
+              } else if (foundReference.receiverId === memberId) {
+                setIsReceived(true);
+                setIsGiven(false);
+              } else if (foundReference.giverId === memberId) {
+                setIsReceived(false);
+                setIsGiven(true);
+              }
               return;
             }
           }
@@ -177,6 +241,16 @@ export default function ReferenceDetailScreen() {
   };
 
   const handleDelete = () => {
+    // Only allow deleting if it's a given reference with pending status
+    if (!isGiven || reference?.status !== 'pending') {
+      Toast.show({
+        type: 'error',
+        text1: 'Cannot Delete',
+        text2: 'Only pending references you gave can be deleted',
+      });
+      return;
+    }
+
     Alert.alert(
       'Delete Reference',
       'Are you sure you want to delete this reference?',
@@ -208,6 +282,101 @@ export default function ReferenceDetailScreen() {
     );
   };
 
+  const handleUpdateStatus = async (newStatus: string, comment: string = '') => {
+    try {
+      const updateData = {
+        status: newStatus,
+        comment: comment || `Status updated to ${newStatus}`,
+        date: new Date().toISOString(),
+      };
+      
+      console.log('Updating status with data:', updateData);
+      await apiService.patch(`/api/references/${id}/status`, updateData);
+      
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: `Reference status updated to ${newStatus}`,
+      });
+      
+      // Refresh the reference data
+      const apiResponse = await apiService.get<any>(`/api/references/${id}`);
+      const data = apiResponse?.data || apiResponse;
+      setReference(data);
+    } catch (error) {
+      console.error('Failed to update status', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to update reference status',
+      });
+    }
+  };
+
+  // Define status hierarchy (order matters) - matching backend validation
+  const statusHierarchy = ['pending', 'contacted', 'business done'];
+  
+  const getAvailableStatuses = () => {
+    if (!reference?.status) return [];
+    
+    const currentStatus = reference.status.toLowerCase();
+    const currentIndex = statusHierarchy.indexOf(currentStatus);
+    
+    // If status is business done, only allow rejected
+    if (currentStatus === 'business done') {
+      return [{ value: 'rejected', label: 'Rejected', comment: 'Reference rejected', color: 'error', icon: 'xmark.circle.fill' }];
+    }
+    
+    // If status is rejected, don't allow any changes
+    if (currentStatus === 'rejected') {
+      return [];
+    }
+    
+    // Build available statuses (current status onwards + rejected)
+    const available = [];
+    
+    // Add statuses that come after current status
+    if (currentIndex !== -1) {
+      for (let i = currentIndex + 1; i < statusHierarchy.length; i++) {
+        const status = statusHierarchy[i];
+        if (status === 'contacted') {
+          available.push({ value: 'contacted', label: 'Contacted', comment: 'Initial contact made', color: 'info', icon: 'phone' });
+        } else if (status === 'business done') {
+          available.push({ value: 'business done', label: 'Mark Done Deal', comment: 'Business completed successfully', color: 'success', icon: 'checkmark.circle' });
+        }
+      }
+    }
+    
+    // Always allow rejection (unless already rejected)
+    available.push({ value: 'rejected', label: 'Rejected', comment: 'Reference rejected', color: 'error', icon: 'xmark.circle.fill' });
+    
+    return available;
+  };
+
+  const showStatusUpdateOptions = () => {
+    console.log('showStatusUpdateOptions called');
+    const availableStatuses = getAvailableStatuses();
+    console.log('Current status:', reference?.status);
+    console.log('Available statuses:', availableStatuses);
+    
+    if (availableStatuses.length === 0) {
+      Toast.show({
+        type: 'info',
+        text1: 'No Updates Available',
+        text2: 'This reference status cannot be changed further',
+      });
+      return;
+    }
+    
+    setStatusModalVisible(true);
+  };
+
+  const handleStatusSelect = (status: string, comment: string) => {
+    console.log('Status selected:', status);
+    setStatusModalVisible(false);
+    handleUpdateStatus(status, comment);
+  };
+
   if (loading) {
     return (
       <ThemedView style={[styles.container, styles.centered, { backgroundColor }]}>
@@ -232,7 +401,7 @@ export default function ReferenceDetailScreen() {
     );
   }
 
-  const renderField = (label: string, value: string | undefined, icon?: string) => {
+  function renderField(label: string, value: string | undefined, icon?: string) {
     if (!value) return null;
     
     return (
@@ -244,36 +413,68 @@ export default function ReferenceDetailScreen() {
         <ThemedText style={styles.fieldValue}>{value}</ThemedText>
       </View>
     );
-  };
+  }
 
   // Format date display
-  const formatDate = (dateString: string) => {
+  function formatDate(dateString: string) {
     try {
       return new Date(dateString).toLocaleDateString();
     } catch {
       return dateString;
     }
-  };
+  }
+
+  // Format status display name
+  function formatStatusDisplay(status: string) {
+    const lowerStatus = status.toLowerCase();
+    if (lowerStatus === 'business done') {
+      return 'Mark Done Deal';
+    }
+    // Capitalize first letter of each word
+    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+  }
+
+  // Get status color
+  function getStatusColor(status: string) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return colors.warning;
+      case 'contacted':
+        return colors.info;
+      case 'accepted':
+        return colors.success;
+      case 'business done':
+        return colors.success;
+      case 'completed':
+        return colors.success;
+      case 'rejected':
+        return colors.error;
+      default:
+        return colors.primary;
+    }
+  }
 
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>
       <NavigationHeader 
         title="Reference Detail" 
         rightComponent={
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity
-              style={[styles.headerButton, { backgroundColor: colors.primary }]}
-              onPress={handleEdit}
-            >
-              <IconSymbol name="pencil" size={16} color="white" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.headerButton, { backgroundColor: colors.destructive }]}
-              onPress={handleDelete}
-            >
-              <IconSymbol name="trash" size={16} color="white" />
-            </TouchableOpacity>
-          </View>
+          isGiven && reference?.status === 'pending' ? (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                style={[styles.headerButton, { backgroundColor: colors.primary }]}
+                onPress={handleEdit}
+              >
+                <IconSymbol name="pencil" size={16} color="white" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.headerButton, { backgroundColor: colors.error }]}
+                onPress={handleDelete}
+              >
+                <IconSymbol name="trash" size={16} color="white" />
+              </TouchableOpacity>
+            </View>
+          ) : null
         }
       />
       <ScrollView
@@ -367,12 +568,20 @@ export default function ReferenceDetailScreen() {
             {renderField('Primary Mobile', reference.mobile1 || reference.phone, 'phone')}
             {renderField('Secondary Mobile', reference.mobile2, 'phone')}
             {renderField('Email', reference.email, 'envelope')}
-            {renderField('Address Line 1', reference.addressLine1, 'house')}
-            {renderField('Address Line 2', reference.addressLine2, 'house')}
+            {renderField('Address Line 1', reference.addressLine1, 'location')}
+            {renderField('Address Line 2', reference.addressLine2, 'location')}
             {renderField('Location', reference.location, 'location')}
             {renderField('Pincode', reference.pincode, 'location')}
             {renderField('Relationship', reference.relationship, 'person.2')}
-            {renderField('Current Status', reference.status, 'checkmark.circle')}
+            {reference.status && (
+              <View style={[styles.fieldContainer, { backgroundColor: cardColor, borderColor: colors.border }]}>
+                <View style={styles.fieldHeader}>
+                  <IconSymbol name="checkmark.circle" size={16} color={colors.icon} />
+                  <ThemedText style={styles.fieldLabel}>Current Status</ThemedText>
+                </View>
+                <ThemedText style={styles.fieldValue}>{formatStatusDisplay(reference.status)}</ThemedText>
+              </View>
+            )}
             {renderField('Urgency', reference.urgency, 'exclamationmark.triangle')}
             {renderField('Remarks', reference.remarks || reference.notes, 'note.text')}
             
@@ -390,57 +599,123 @@ export default function ReferenceDetailScreen() {
         {/* Status History */}
         {reference.statusHistory && reference.statusHistory.length > 0 && (
           <View style={styles.sectionContainer}>
-            <ThemedText style={[styles.sectionTitle, { color: textColor }]}>Status History</ThemedText>
+            <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
+              Status History ({reference.statusHistory.length})
+            </ThemedText>
             <View style={styles.historyContainer}>
-              {reference.statusHistory.map((history, index) => (
-                <View key={history.id} style={[styles.historyItem, { backgroundColor: cardColor, borderColor: colors.border }]}>
-                  <View style={styles.historyHeader}>
-                    <View style={styles.historyStatusContainer}>
-                      <View style={[styles.historyStatusDot, { backgroundColor: colors.primary }]} />
-                      <ThemedText style={[styles.historyStatus, { color: colors.primary }]}>
-                        {history.status.toUpperCase()}
+              {[...reference.statusHistory].reverse().map((history, index) => {
+                const statusColor = getStatusColor(history.status);
+                return (
+                  <View key={history.id} style={[styles.historyItem, { backgroundColor: cardColor, borderColor: colors.border }]}>
+                    <View style={styles.historyHeader}>
+                      <View style={styles.historyStatusContainer}>
+                        <View style={[styles.historyStatusDot, { backgroundColor: statusColor }]} />
+                        <ThemedText style={[styles.historyStatus, { color: statusColor }]}>
+                          {formatStatusDisplay(history.status).toUpperCase()}
+                        </ThemedText>
+                      </View>
+                      <ThemedText style={[styles.historyDate, { color: colors.icon }]}>
+                        {formatDate(history.date)}
                       </ThemedText>
                     </View>
-                    <ThemedText style={[styles.historyDate, { color: colors.icon }]}>
-                      {formatDate(history.date)}
+                    {history.comment && (
+                      <ThemedText style={[styles.historyComment, { color: textColor }]}>
+                        {history.comment}
+                      </ThemedText>
+                    )}
+                    <ThemedText style={[styles.historyTimestamp, { color: colors.icon }]}>
+                      Updated: {formatDate(history.updatedAt)}
                     </ThemedText>
+                    {index < reference.statusHistory!.length - 1 && (
+                      <View style={[styles.historyConnector, { backgroundColor: colors.border }]} />
+                    )}
                   </View>
-                  {history.comment && (
-                    <ThemedText style={[styles.historyComment, { color: textColor }]}>
-                      {history.comment}
-                    </ThemedText>
-                  )}
-                  <ThemedText style={[styles.historyTimestamp, { color: colors.icon }]}>
-                    Updated: {formatDate(history.updatedAt)}
-                  </ThemedText>
-                  {index < reference.statusHistory!.length - 1 && (
-                    <View style={[styles.historyConnector, { backgroundColor: colors.border }]} />
-                  )}
-                </View>
-              ))}
+                );
+              })}
             </View>
           </View>
         )}
       </ScrollView>
 
       {/* Action Buttons */}
-      <View style={[styles.actionContainer, { backgroundColor: cardColor, borderColor: colors.border }]}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.editButton, { backgroundColor: colors.primary }]}
-          onPress={handleEdit}
-        >
-          <IconSymbol name="pencil" size={20} color="white" />
-          <ThemedText style={[styles.actionButtonText, { color: 'white' }]}>Edit</ThemedText>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.actionButton, styles.deleteButton, { backgroundColor: colors.destructive }]}
-          onPress={handleDelete}
-        >
-          <IconSymbol name="trash" size={20} color="white" />
-          <ThemedText style={[styles.actionButtonText, { color: 'white' }]}>Delete</ThemedText>
-        </TouchableOpacity>
-      </View>
+      {isReceived && getAvailableStatuses().length > 0 ? (
+        <View style={[styles.actionContainer, { backgroundColor: cardColor, borderColor: colors.border }]}>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: colors.primary }]}
+            onPress={showStatusUpdateOptions}
+          >
+            <IconSymbol name="pencil.circle" size={20} color="white" />
+            <ThemedText style={[styles.actionButtonText, { color: 'white' }]}>Update Status</ThemedText>
+          </TouchableOpacity>
+        </View>
+      ) : isGiven && reference?.status === 'pending' ? (
+        <View style={[styles.actionContainer, { backgroundColor: cardColor, borderColor: colors.border }]}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.editButton, { backgroundColor: colors.primary }]}
+            onPress={handleEdit}
+          >
+            <IconSymbol name="pencil" size={20} color="white" />
+            <ThemedText style={[styles.actionButtonText, { color: 'white' }]}>Edit</ThemedText>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.actionButton, styles.deleteButton, { backgroundColor: colors.error }]}
+            onPress={handleDelete}
+          >
+            <IconSymbol name="trash" size={20} color="white" />
+            <ThemedText style={[styles.actionButtonText, { color: 'white' }]}>Delete</ThemedText>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      {/* Status Update Modal */}
+      <Modal
+        visible={statusModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setStatusModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { backgroundColor: cardColor }]}>
+            <View style={styles.modalHeader}>
+              <ThemedText style={styles.modalTitle}>Update Reference Status</ThemedText>
+              <TouchableOpacity onPress={() => setStatusModalVisible(false)}>
+                <IconSymbol name="xmark" size={24} color={colors.icon} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.modalContent}>
+              <Text style={[styles.modalSubtitle, { color: colors.icon }]}>
+                Current Status: <Text style={{ fontWeight: 'bold', color: colors.text }}>{reference?.status ? formatStatusDisplay(reference.status).toUpperCase() : 'PENDING'}</Text>
+              </Text>
+              <Text style={[styles.modalSubtitle, { color: colors.icon, marginTop: 4, marginBottom: 8 }]}>
+                Select the new status:
+              </Text>
+              
+              {getAvailableStatuses().map((statusOption) => {
+                const bgColor = colors[statusOption.color as keyof typeof colors] || colors.primary;
+                return (
+                  <TouchableOpacity
+                    key={statusOption.value}
+                    style={[styles.statusOption, { backgroundColor: bgColor, opacity: 0.9 }]}
+                    onPress={() => handleStatusSelect(statusOption.value, statusOption.comment)}
+                  >
+                    <IconSymbol name={statusOption.icon as any} size={24} color="white" />
+                    <ThemedText style={styles.statusOptionText}>{statusOption.label}</ThemedText>
+                  </TouchableOpacity>
+                );
+              })}
+
+              <TouchableOpacity
+                style={[styles.cancelOption, { borderColor: colors.border }]}
+                onPress={() => setStatusModalVisible(false)}
+              >
+                <ThemedText style={[styles.cancelOptionText, { color: colors.text }]}>Cancel</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -541,15 +816,22 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
     borderTopWidth: 1,
+    zIndex: 1000,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   actionButton: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
+    paddingHorizontal: 8,
     borderRadius: 8,
-    gap: 8,
+    gap: 4,
   },
   editButton: {
     // Specific styles for edit button if needed
@@ -558,8 +840,9 @@ const styles = StyleSheet.create({
     // Specific styles for delete button if needed
   },
   actionButtonText: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '600',
+    textAlign: 'center',
   },
   sectionContainer: {
     marginBottom: 20,
@@ -655,6 +938,64 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContainer: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  modalContent: {
+    gap: 12,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  statusOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+  },
+  statusOptionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+  },
+  cancelOption: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  cancelOptionText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

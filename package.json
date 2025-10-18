@@ -8,7 +8,11 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "build:android": "node ./scripts/build-android.js",
+    "build:android:wait": "node ./scripts/build-android.js preview --wait",
+    "build:android:preview": "node ./scripts/build-android.js preview",
+    "build:android:production": "node ./scripts/build-android.js production"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",

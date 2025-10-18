@@ -201,53 +201,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       //   }
       // }
 
-      // Handle admin login locally first
-      if (email.toLowerCase() === "admin") {
-        console.log("AuthContext: Admin login attempt detected");
-
-        if (password === "admin") {
-          console.log("AuthContext: Admin credentials correct");
-
-          const adminUser: User = {
-            id: 1,
-            email: "admin@bbng.com",
-            name: "Administrator",
-            role: "admin",
-            active: true,
-            lastLogin: new Date().toISOString(),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            policyAccepted: true,
-            policyAcceptedAt: new Date().toISOString(),
-            policyAcceptedVersion: "1.0",
-            memberId: null,
-            member: null,
-          };
-
-          const adminToken = "admin_token_" + Date.now();
-
-          // Store admin data locally
-          await Promise.all([
-            AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(adminUser)),
-            AsyncStorage.setItem(STORAGE_KEYS.TOKEN, adminToken),
-          ]);
-
-          setUser(adminUser);
-          setToken(adminToken);
-
-          console.log("AuthContext: Admin login successful");
-          return {
-            success: true,
-            redirectUrl: "/(tabs)/",
-          };
-        } else {
-          console.log("AuthContext: Admin password incorrect");
-          return {
-            success: false,
-            error: "Invalid admin credentials. Please try again.",
-          };
-        }
-      }
+      // Admin bypass removed - all logins now go through API authentication
+      // This ensures valid tokens are used for API requests
 
       const loginRequest: LoginRequest = { email, password };
       const response = (await authService.login(
