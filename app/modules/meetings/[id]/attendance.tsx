@@ -77,7 +77,7 @@ export default function AttendanceScreen() {
       setMembers(response.data?.members || []);
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to fetch attendance data', [
-        { text: 'OK', onPress: () => router.back() },
+        { text: 'OK', onPress: () => router.push('/modules/meetings' as any) },
       ]);
     } finally {
       setLoading(false);
@@ -108,7 +108,7 @@ export default function AttendanceScreen() {
 
       await post(`/api/chapter-meetings/${id}/attendance`, { attendance });
       Alert.alert('Success', 'Attendance saved successfully', [
-        { text: 'OK', onPress: () => router.back() },
+        { text: 'OK', onPress: () => router.replace('/modules/meetings' as any) },
       ]);
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to save attendance');
@@ -180,7 +180,7 @@ export default function AttendanceScreen() {
           end={{ x: 1, y: 1 }}
         >
           <View style={styles.headerContent}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <TouchableOpacity onPress={() => router.push('/modules/meetings' as any)} style={styles.backButton}>
               <IconSymbol name="chevron.left" size={24} color="white" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Attendance</Text>
@@ -207,7 +207,7 @@ export default function AttendanceScreen() {
         end={{ x: 1, y: 1 }}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.push('/modules/meetings')} style={styles.backButton}>
             <IconSymbol name="chevron.left" size={24} color="white" />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>

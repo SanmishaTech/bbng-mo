@@ -19,6 +19,34 @@ export default function ModulesLayout() {
         name="visitors" 
         options={{ headerShown: false }} 
       />
+      <Stack.Screen 
+        name="regions" 
+        options={{ headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="states" 
+        options={{ headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="chapters" 
+        options={{ headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="locations" 
+        options={{ headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="categories" 
+        options={{ headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="subcategories" 
+        options={{ headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="packages" 
+        options={{ headerShown: false }} 
+      />
     </Stack>
   );
 }

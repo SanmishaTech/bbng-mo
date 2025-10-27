@@ -18,6 +18,7 @@ interface NavigationHeaderProps {
   showBackButton?: boolean;
   rightComponent?: React.ReactNode;
   onBackPress?: () => void;
+  backPath?: string; // Explicit path to navigate back to
 }
 
 export function NavigationHeader({
@@ -25,6 +26,7 @@ export function NavigationHeader({
   showBackButton = true,
   rightComponent,
   onBackPress,
+  backPath,
 }: NavigationHeaderProps) {
   const router = useRouter();
   const colorScheme = useColorScheme();
@@ -36,11 +38,15 @@ export function NavigationHeader({
   const handleBackPress = () => {
     if (onBackPress) {
       onBackPress();
+    } else if (backPath) {
+      // Use explicit back path if provided to avoid navigation loops
+      router.push(backPath as any);
     } else {
+      // Fallback to canGoBack check
       if (router.canGoBack()) {
         router.back();
       } else {
-        router.push("/(tabs)/modules");
+        router.push("/(tabs)" as any);
       }
     }
   };
@@ -136,16 +142,18 @@ const styles = StyleSheet.create({
     minHeight: 56,
   },
   leftContainer: {
-    flex: 1,
+    minWidth: 80,
     alignItems: "flex-start",
   },
   centerContainer: {
-    flex: 2,
+    flex: 1,
     alignItems: "center",
+    justifyContent: "center",
   },
   rightContainer: {
-    flex: 1,
+    minWidth: 80,
     alignItems: "flex-end",
+    justifyContent: "center",
   },
   backButton: {
     width: 40,
@@ -175,5 +183,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     textAlign: "center",
+    paddingHorizontal: 8,
   },
 });

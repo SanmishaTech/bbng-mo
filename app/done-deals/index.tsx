@@ -187,7 +187,7 @@ export default function DoneDealsIndex() {
 
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>
-      <NavigationHeader title="Done Deals" />
+      <NavigationHeader title="Done Deals" backPath="/(tabs)" />
 
       {/* Search Bar */}
       <View

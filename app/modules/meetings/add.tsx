@@ -93,7 +93,7 @@ export default function AddMeetingScreen() {
 
       await post('/api/chapter-meetings', payload);
       Alert.alert('Success', 'Meeting created successfully', [
-        { text: 'OK', onPress: () => router.back() },
+        { text: 'OK', onPress: () => router.replace('/modules/meetings' as any) },
       ]);
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to create meeting');
@@ -135,7 +135,7 @@ export default function AddMeetingScreen() {
         end={{ x: 1, y: 1 }}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.push('/modules/meetings' as any)} style={styles.backButton}>
             <IconSymbol name="chevron.left" size={24} color="white" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Add Meeting</Text>

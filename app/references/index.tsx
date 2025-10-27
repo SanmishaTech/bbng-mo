@@ -69,6 +69,7 @@ export default function ReferencesIndex() {
   const [selectedTab, setSelectedTab] = useState<'all' | 'given' | 'received'>('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const isInitialMount = React.useRef(true);
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -223,13 +224,18 @@ export default function ReferencesIndex() {
   }, []);
 
   // Reload references when the screen comes into focus (after adding/editing)
+  // Skip initial mount since useEffect handles that, but reload on all subsequent focuses
   useFocusEffect(
     React.useCallback(() => {
-      // Only reload if we're not currently loading
-      if (!loading) {
-        loadReferences(false);
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        console.log('Skipping reload on initial mount');
+        return;
       }
-    }, [loading])
+      
+      console.log('Screen focused - reloading references');
+      loadReferences(false);
+    }, [])
   );
 
   const filteredReferences = references.filter(ref => {
@@ -331,7 +337,7 @@ export default function ReferencesIndex() {
 
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>
-      <NavigationHeader title="References" />
+      <NavigationHeader title="References" backPath="/(tabs)" />
       {/* Search Bar */}
       <View style={[styles.searchContainer, { backgroundColor: cardColor, borderColor: colors.border }]}>
         <IconSymbol name="magnifyingglass" size={20} color={colors.icon} />

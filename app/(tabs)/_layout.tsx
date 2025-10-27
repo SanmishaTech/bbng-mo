@@ -55,14 +55,14 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="performance"
+        name="_modules"
         options={{
-          title: "Performance",
+          title: "Module",
           headerShown: false,
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol
               size={focused ? 30 : 26}
-              name="chart.bar.fill"
+              name="square.grid.2x2.fill"
               color={color}
             />
           ),
@@ -72,6 +72,7 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: "Profile",
+          headerShown: false,
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol
               size={focused ? 30 : 26}
@@ -82,31 +83,25 @@ export default function TabLayout() {
         }}
       />
 
+      {/* Hidden tabs - still accessible via navigation but not shown in tab bar */}
+      <Tabs.Screen
+        name="performance"
+        options={{
+          href: null,
+          headerShown: false,
+        }}
+      />
       <Tabs.Screen
         name="references"
         options={{
-          title: "References",
+          href: null,
           headerShown: false,
-          tabBarIcon: ({ color, focused }) => (
-            <IconSymbol
-              size={focused ? 30 : 26}
-              name="person.badge.plus"
-              color={color}
-            />
-          ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Settings",
-          tabBarIcon: ({ color, focused }) => (
-            <IconSymbol
-              size={focused ? 30 : 26}
-              name="gearshape.fill"
-              color={color}
-            />
-          ),
+          href: null,
         }}
       />
     </Tabs>

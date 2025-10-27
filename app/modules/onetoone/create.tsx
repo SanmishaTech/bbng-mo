@@ -262,6 +262,7 @@ export default function OneToOneFormScreen() {
         <NavigationHeader 
           title="Schedule One-to-One"
           showBackButton
+          backPath="/modules/onetoone"
         />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -278,22 +279,19 @@ export default function OneToOneFormScreen() {
         showBackButton
       />
       
-      <KeyboardAvoidingView
-        behavior={Platform.select({ ios: 'padding', android: undefined })}
-        style={styles.flex}
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={[styles.formCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={styles.formHeader}>
-              <Text style={[styles.formTitle, { color: colors.text }]}>Meeting Details</Text>
-              <Text style={[styles.formSubtitle, { color: colors.placeholder }]}>Schedule a one-to-one meeting with a fellow member</Text>
-            </View>
+        <View style={[styles.formCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.formHeader}>
+            <Text style={[styles.formTitle, { color: colors.text }]}>Meeting Details</Text>
+            <Text style={[styles.formSubtitle, { color: colors.placeholder }]}>Schedule a one-to-one meeting with a fellow member</Text>
+          </View>
 
-            <View style={styles.formSection}>
+          <View style={styles.formSection}>
 
               {/* Chapter */}
               <View style={styles.field}>
@@ -401,31 +399,30 @@ export default function OneToOneFormScreen() {
               />
             </View>
 
-          </View>
-        </ScrollView>
-        
-        {/* Fixed Footer */}
-        <View style={[styles.footer, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
-          <TouchableOpacity
-            style={[styles.cancelButton, { borderColor: colors.border }]}
-            onPress={() => router.push('/modules/onetoone')}
-            disabled={submitting}
-          >
-            <Text style={[styles.cancelButtonText, { color: colors.text }]}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.scheduleButton, { backgroundColor: colors.primary, opacity: submitting ? 0.7 : 1 }]}
-            onPress={onSubmit}
-            disabled={submitting}
-          >
-            {submitting ? (
-              <ActivityIndicator size="small" color="#FFF" />
-            ) : (
-              <Text style={styles.scheduleButtonText}>Schedule Meeting</Text>
-            )}
-          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </ScrollView>
+      
+      {/* Fixed Footer - Always visible at bottom */}
+      <View style={[styles.footer, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+        <TouchableOpacity
+          style={[styles.cancelButton, { borderColor: colors.primary }]}
+          onPress={() => router.push('/modules/onetoone' as any)}
+          disabled={submitting}
+        >
+          <Text style={[styles.cancelButtonText, { color: colors.primary }]} numberOfLines={1}>Cancel</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.scheduleButton, { backgroundColor: colors.primary, opacity: submitting ? 0.7 : 1 }]}
+          onPress={onSubmit}
+          disabled={submitting}
+        >
+          {submitting ? (
+            <ActivityIndicator size="small" color="#FFF" />
+          ) : (
+            <Text style={styles.scheduleButtonText} numberOfLines={1}>Schedule</Text>
+          )}
+        </TouchableOpacity>
+      </View>
 
       {/* Chapter Picker */}
       <PickerModal
@@ -508,6 +505,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
+    paddingBottom: 100,
   },
   formCard: {
     borderRadius: 14,
@@ -614,42 +612,49 @@ const styles = StyleSheet.create({
 
   footer: {
     borderTopWidth: 1,
-    padding: 12,
-    paddingHorizontal: 16,
+    padding: 16,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 16,
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
   },
   cancelButton: {
     flex: 1,
     height: 54,
-    borderWidth: 0,
-    borderRadius: 16,
+    borderWidth: 2,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0, 123, 255, 0.08)',
+    backgroundColor: 'transparent',
   },
   cancelButtonText: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
+    textAlign: 'center',
   },
   scheduleButton: {
     flex: 1,
     height: 54,
-    borderRadius: 16,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   scheduleButtonText: {
     color: 'white',
     fontWeight: '700',
-    fontSize: 17,
-    letterSpacing: 0.5,
+    fontSize: 16,
+    letterSpacing: 0.3,
+    textAlign: 'center',
   },
   outlineBtn: {
     flex: 1,

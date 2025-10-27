@@ -1,230 +1,333 @@
-import React, { useState, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Modal,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  Animated,
-  ScrollView,
-  Dimensions,
-} from 'react-native';
-import { BlurView } from 'expo-blur';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { NavigationHeader } from '@/components/NavigationHeader';
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
 import { Colors } from '@/constants/Colors';
-import { LinearGradient } from 'expo-linear-gradient';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { useThemeColor } from '@/hooks/useThemeColor';
+import { deleteChapter, getChapters, Chapter } from '@/services/chapterService';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  FlatList,
+  Modal,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import Toast from 'react-native-toast-message';
 
-const { width, height } = Dimensions.get('window');
-
-interface Chapter {
-  id: string;
-  name: string;
-  description: string;
-}
-
-export default function ChaptersScreen() {
+export default function ChaptersListScreen() {
+  const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const [chapters, setChapters] = useState<Chapter[]>([]);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [newChapterName, setNewChapterName] = useState('');
-  const [newChapterDescription, setNewChapterDescription] = useState('');
-  const animatedValues = useRef<{[key: string]: Animated.Value}>({}).current;
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [chapterToDelete, setChapterToDelete] = useState<{ id: number; name: string } | null>(null);
 
-  const addChapter = () => {
-    if (newChapterName.trim() !== '') {
-      const newChapter = {
-        id: Date.now().toString(),
-        name: newChapterName,
-        description: newChapterDescription,
-      };
-      setChapters([...chapters, newChapter]);
-      setNewChapterName('');
-      setNewChapterDescription('');
-      setModalVisible(false);
+  const loadChapters = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      console.log('Loading chapters from API');
+      const response = await getChapters(1, 100, '', 'name', 'asc');
+      console.log('Chapters loaded successfully:', response.data?.chapters?.length || 0, 'chapters');
+      setChapters(response.data?.chapters || []);
+    } catch (err) {
+      console.error('Error loading chapters:', err);
+      setError('Failed to load chapters');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to load chapters',
+      });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadChapters();
+  }, [loadChapters]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadChapters();
+  }, [loadChapters]);
+
+  const handleDelete = (id: number, name: string) => {
+    setChapterToDelete({ id, name });
+    setDeleteModalVisible(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!chapterToDelete) return;
+    
+    try {
+      await deleteChapter(chapterToDelete.id);
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Chapter deleted successfully',
+      });
+      setDeleteModalVisible(false);
+      setChapterToDelete(null);
+      loadChapters();
+    } catch (error: any) {
+      console.error('Error deleting chapter:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: error?.message || 'Failed to delete chapter',
+      });
+      setDeleteModalVisible(false);
     }
   };
 
-  function renderEmptyState() {
+  const SkeletonCard = () => (
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: colors.card, borderColor: colors.border },
+      ]}
+    >
+      <View style={styles.skelRow}>
+        <View
+          style={[
+            styles.skelBox,
+            { width: 150, backgroundColor: colors.border },
+          ]}
+        />
+      </View>
+      <View style={[styles.skelActions]}>
+        <View
+          style={[styles.skelActionBtn, { backgroundColor: colors.border }]}
+        />
+        <View
+          style={[styles.skelActionBtn, { backgroundColor: colors.border }]}
+        />
+      </View>
+    </View>
+  );
+
+  const EmptyState = () => (
+    <View style={styles.emptyState}>
+      <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
+        No Chapters Found
+      </Text>
+      <Text style={[styles.emptyStateText, { color: colors.placeholder }]}>
+        You don't have any chapters yet. Add one to get started.
+      </Text>
+      <TouchableOpacity
+        style={[styles.createButton, { backgroundColor: colors.primary }]}
+        onPress={() => router.push('/modules/chapters/add' as any)}
+      >
+        <Text style={styles.createButtonText}>Add Chapter</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const ErrorState = () => (
+    <View style={styles.emptyState}>
+      <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
+        Something went wrong
+      </Text>
+      <Text style={[styles.emptyStateText, { color: colors.placeholder }]}>
+        We couldn't load your chapters. Please try again.
+      </Text>
+      <TouchableOpacity
+        style={[styles.createButton, { backgroundColor: colors.primary }]}
+        onPress={() => loadChapters()}
+      >
+        <Text style={styles.createButtonText}>Retry</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  function renderItem({ item }: { item: Chapter }) {
     return (
-      <View style={styles.emptyState}>
-        <IconSymbol name="book.closed" size={64} color={colors.placeholder} />
-        <Text style={[styles.emptyStateTitle, { color: colors.text }]}>No Chapters Yet</Text>
-        <Text style={[styles.emptyStateSubtitle, { color: colors.placeholder }]}>
-          Tap the + button below to add your first chapter
-        </Text>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
+        <View style={styles.cardHeader}>
+          <Text style={[styles.chapterName, { color: colors.text }]}>
+            {item.name}
+          </Text>
+        </View>
+
+        <View style={styles.detailsGrid}>
+          <View style={styles.detailRow}>
+            <Text style={[styles.detailLabel, { color: colors.placeholder }]}>
+              Meeting Day:
+            </Text>
+            <Text style={[styles.detailValue, { color: colors.text }]}>
+              {item.meetingday}
+            </Text>
+          </View>
+
+          {item.location?.location && (
+            <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, { color: colors.placeholder }]}>
+                Location:
+              </Text>
+              <Text style={[styles.detailValue, { color: colors.text }]}>
+                {item.location.location}
+              </Text>
+            </View>
+          )}
+
+          {item.zones?.name && (
+            <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, { color: colors.placeholder }]}>
+                Zone:
+              </Text>
+              <Text style={[styles.detailValue, { color: colors.text }]}>
+                {item.zones.name}
+              </Text>
+            </View>
+          )}
+
+          {item.venue && (
+            <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, { color: colors.placeholder }]}>
+                Venue:
+              </Text>
+              <Text style={[styles.detailValue, { color: colors.text }]} numberOfLines={2}>
+                {item.venue}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.actionsRow}>
+          <TouchableOpacity
+            style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
+            onPress={() => router.push(`/modules/chapters/${item.id}/edit` as any)}
+          >
+            <Text style={styles.primaryBtnText}>Edit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.ghostDangerBtn, { borderColor: '#F44336' }]}
+            onPress={() => handleDelete(item.id, item.name)}
+          >
+            <Text style={styles.ghostDangerText}>Delete</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
 
-  function renderItem({ item }: { item: Chapter }) {
-    if (!animatedValues[item.id]) {
-      animatedValues[item.id] = new Animated.Value(0);
+  const content = () => {
+    if (loading) {
+      return (
+        <View style={styles.listContainer}>
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </View>
+      );
     }
 
-    Animated.timing(animatedValues[item.id], {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-
-    const translateY = animatedValues[item.id].interpolate({
-      inputRange: [0, 1],
-      outputRange: [50, 0],
-    });
+    if (error) {
+      return <ErrorState />;
+    }
 
     return (
-      <Animated.View style={[
-        styles.chapterItemWrapper,
-        { opacity: animatedValues[item.id], transform: [{ translateY }] }
-      ]}>
-        <TouchableOpacity 
-          style={[styles.chapterItem, { backgroundColor: colors.card, borderColor: colors.border }]}
-          activeOpacity={0.7}
-        >
-          <View style={styles.chapterHeader}>
-            <Text style={[styles.chapterName, { color: colors.text }]}>{item.name}</Text>
-            <TouchableOpacity style={styles.chapterMenu}>
-              <IconSymbol name="ellipsis" size={20} color={colors.placeholder} />
-            </TouchableOpacity>
-          </View>
-          {item.description ? (
-            <Text style={[styles.chapterDescription, { color: colors.placeholder }]}>
-              {item.description}
-            </Text>
-          ) : null}
-        </TouchableOpacity>
-      </Animated.View>
+      <FlatList
+        data={chapters}
+        renderItem={renderItem}
+        keyExtractor={(item) => String(item.id)}
+        style={styles.list}
+        contentContainerStyle={[
+          styles.listContainer,
+          chapters.length === 0 && { flex: 1 },
+        ]}
+        ListEmptyComponent={EmptyState}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      />
     );
   };
 
+  const backgroundColor = useThemeColor({}, 'background');
+
+  const rightComponent = (
+    <TouchableOpacity
+      onPress={() => router.push('/modules/chapters/add' as any)}
+      style={[styles.addButton, { backgroundColor: colors.primary }]}
+    >
+      <ThemedText style={styles.addButtonText}>Add</ThemedText>
+    </TouchableOpacity>
+  );
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <LinearGradient
-        colors={[colors.primary, colors.primaryDark]}
-        style={styles.header}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <Text style={styles.headerTitle}>Chapters</Text>
-        <Text style={styles.headerSubtitle}>Manage your book chapters</Text>
-      </LinearGradient>
-
-      <FlatList
-        data={chapters}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContainer}
-        ListEmptyComponent={renderEmptyState}
-        showsVerticalScrollIndicator={false}
+    <ThemedView style={[styles.container, { backgroundColor }]}>
+      <NavigationHeader
+        title="Chapters"
+        rightComponent={rightComponent}
+        backPath="/(tabs)"
       />
-      
-      <TouchableOpacity
-        style={[styles.addButton, { backgroundColor: colors.primary }]}
-        onPress={() => setModalVisible(true)}
-        activeOpacity={0.8}
-      >
-        <IconSymbol name="plus" size={24} color="white" />
-      </TouchableOpacity>
 
+      <View style={[styles.contentContainer, { backgroundColor }]}>
+        {content()}
+      </View>
+
+      {/* Delete Confirmation Modal */}
       <Modal
+        visible={deleteModalVisible}
+        transparent
         animationType="fade"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-        statusBarTranslucent
+        onRequestClose={() => setDeleteModalVisible(false)}
       >
-        <BlurView intensity={20} style={styles.modalOverlay}>
-          <KeyboardAvoidingView 
-            style={styles.modalContainer}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          >
-            <View style={[styles.modernModalView, { backgroundColor: colors.background }]}>
-              {/* Modal Header */}
-              <View style={styles.modernModalHeader}>
-                <TouchableOpacity 
-                  style={styles.closeButton}
-                  onPress={() => setModalVisible(false)}
-                >
-                  <IconSymbol name="xmark" size={20} color={colors.placeholder} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Modal Content */}
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <View style={styles.modalContent}>
-                  <Text style={[styles.modernModalTitle, { color: colors.text }]}>Add New Chapter</Text>
-                  <Text style={[styles.modernModalSubtitle, { color: colors.placeholder }]}>
-                    Fill in the details below to create a new chapter
-                  </Text>
-
-                  {/* Chapter Name Input */}
-                  <View style={styles.inputGroup}>
-                    <Text style={[styles.inputLabel, { color: colors.text }]}>Chapter Name</Text>
-                    <View style={[styles.modernInputContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-                      <TextInput
-                        style={[styles.modernInput, { color: colors.text }]}
-                        placeholder="Enter chapter name"
-                        placeholderTextColor={colors.placeholder}
-                        value={newChapterName}
-                        onChangeText={setNewChapterName}
-                        autoFocus
-                      />
-                    </View>
-                  </View>
-
-                  {/* Chapter Description Input */}
-                  <View style={styles.inputGroup}>
-                    <Text style={[styles.inputLabel, { color: colors.text }]}>Description</Text>
-                    <View style={[styles.modernInputContainer, styles.textAreaContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-                      <TextInput
-                        style={[styles.modernInput, styles.textArea, { color: colors.text }]}
-                        placeholder="Add a brief description (optional)"
-                        placeholderTextColor={colors.placeholder}
-                        value={newChapterDescription}
-                        onChangeText={setNewChapterDescription}
-                        multiline
-                        numberOfLines={4}
-                        textAlignVertical="top"
-                      />
-                    </View>
-                  </View>
-                </View>
-              </ScrollView>
-
-              {/* Action Buttons */}
-              <View style={styles.modernButtonContainer}>
-                <TouchableOpacity 
-                  style={[styles.modernButton, styles.secondaryButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                  onPress={() => setModalVisible(false)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.modernButtonText, { color: colors.text }]}>Cancel</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={[styles.modernButton, styles.primaryButton, { 
-                    backgroundColor: newChapterName.trim() ? colors.primary : colors.border,
-                    opacity: newChapterName.trim() ? 1 : 0.5
-                  }]}
-                  onPress={addChapter}
-                  activeOpacity={0.8}
-                  disabled={!newChapterName.trim()}
-                >
-                  <Text style={[styles.modernButtonText, { color: 'white' }]}>Add Chapter</Text>
-                </TouchableOpacity>
-              </View>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              Delete Chapter
+            </Text>
+            <Text style={[styles.modalMessage, { color: colors.placeholder }]}>
+              Are you sure you want to delete "{chapterToDelete?.name}"? This action cannot be undone.
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: colors.surface }]}
+                onPress={() => {
+                  setDeleteModalVisible(false);
+                  setChapterToDelete(null);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.text }]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: '#F44336' }]}
+                onPress={confirmDelete}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.modalButtonText, { color: 'white' }]}>
+                  Delete
+                </Text>
+              </TouchableOpacity>
             </View>
-          </KeyboardAvoidingView>
-        </BlurView>
+          </View>
+        </View>
       </Modal>
-    </View>
+    </ThemedView>
   );
 }
 
@@ -232,245 +335,210 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    paddingTop: 60,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-  },
-  headerTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 8,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  listContainer: {
-    paddingBottom: 100,
-    paddingTop: 20,
-  },
-  chapterItemWrapper: {
-    marginVertical: 8,
-    marginHorizontal: 16,
-  },
-  chapterItem: {
-    padding: 20,
-    borderRadius: 20,
-    borderWidth: 0,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  chapterName: {
-    fontSize: 18,
-    fontWeight: '800',
+  contentContainer: {
     flex: 1,
-    letterSpacing: 0.3,
-  },
-  chapterDescription: {
-    fontSize: 15,
-    marginTop: 10,
-    lineHeight: 22,
-    opacity: 0.8,
+    paddingHorizontal: 16,
   },
   addButton: {
-    position: 'absolute',
-    bottom: 30,
-    right: 30,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  modalView: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 24,
-    paddingBottom: 40,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -4,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    flex: 1,
+  addButtonText: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 15,
     letterSpacing: 0.3,
   },
-  input: {
-    height: 54,
+  list: {
+    flex: 1,
+  },
+  listContainer: {
+    paddingBottom: 24,
+    gap: 12,
+  },
+  card: {
+    marginBottom: 16,
+    padding: 18,
+    borderRadius: 20,
     borderWidth: 0,
-    borderRadius: 16,
-    paddingHorizontal: 18,
-    fontSize: 16,
-    marginBottom: 15,
-    fontWeight: '500',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
   },
-  buttonContainer: {
+  cardHeader: {
+    marginBottom: 16,
+  },
+  chapterName: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  detailsGrid: {
+    gap: 10,
+    marginBottom: 16,
+  },
+  detailRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 20,
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  detailLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    minWidth: 100,
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  primaryBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 14,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  primaryBtnText: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  ghostDangerBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 14,
+    alignItems: 'center',
+    borderWidth: 0,
+    backgroundColor: 'rgba(244, 67, 54, 0.1)',
+  },
+  ghostDangerText: {
+    color: '#F44336',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
     gap: 10,
   },
-  button: {
-    flex: 1,
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    textAlign: 'center',
+    letterSpacing: 0.3,
+  },
+  emptyStateText: {
+    fontSize: 15,
+    textAlign: 'center',
+    marginBottom: 8,
+    opacity: 0.7,
+    lineHeight: 22,
+  },
+  createButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 14,
     borderRadius: 16,
-    paddingVertical: 16,
     alignItems: 'center',
+    marginTop: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 4,
   },
-  cancelButton: {
-    marginRight: 5,
-  },
-  buttonText: {
+  createButtonText: {
     color: 'white',
-    fontSize: 17,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    fontSize: 14,
   },
-  emptyState: {
+  // Skeleton styles
+  skelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  skelBox: {
+    height: 16,
+    borderRadius: 6,
+  },
+  skelActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  skelActionBtn: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-    paddingTop: 100,
+    height: 40,
+    borderRadius: 10,
   },
-  emptyStateTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    marginTop: 20,
-    marginBottom: 10,
-    letterSpacing: 0.3,
-  },
-  emptyStateSubtitle: {
-    fontSize: 16,
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  chapterHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  chapterMenu: {
-    padding: 4,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
+  // Modal styles
   modalOverlay: {
     flex: 1,
-  },
-  modernModalView: {
-    height: height * 0.85,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 16,
-  },
-  modernModalHeader: {
-    alignItems: 'flex-end',
-    paddingBottom: 10,
-  },
-  closeButton: {
-    padding: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   modalContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  modernModalTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 8,
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 12,
+    letterSpacing: 0.3,
   },
-  modernModalSubtitle: {
-    fontSize: 16,
-    lineHeight: 24,
+  modalMessage: {
+    fontSize: 15,
+    lineHeight: 22,
     marginBottom: 24,
   },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  modernInputContainer: {
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-  },
-  modernInput: {
-    height: 56,
-    fontSize: 16,
-  },
-  textAreaContainer: {
-    paddingVertical: 12,
-  },
-  textArea: {
-    height: 100,
-  },
-  modernButtonContainer: {
+  modalButtons: {
     flexDirection: 'row',
     gap: 12,
-    padding: 16,
-    borderTopWidth: 1,
-    borderColor: '#E5E5EA',
   },
-  modernButton: {
+  modalButton: {
     flex: 1,
-    borderRadius: 12,
-    paddingVertical: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
     alignItems: 'center',
-    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  primaryButton: {},
-  secondaryButton: {
-    borderWidth: 1,
-  },
-  modernButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
+  modalButtonText: {
+    fontWeight: '700',
+    fontSize: 15,
   },
 });

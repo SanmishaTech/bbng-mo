@@ -102,7 +102,7 @@ export default function DoneDealsDetail() {
                 text1: "Success",
                 text2: "Done deal deleted successfully",
               });
-              router.back();
+              router.push('/done-deals' as any);
             } catch (error) {
               console.error("Failed to delete done deal", error);
               Toast.show({
@@ -141,7 +141,7 @@ export default function DoneDealsDetail() {
         <ThemedText style={styles.errorText}>Done deal not found</ThemedText>
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: colors.primary }]}
-          onPress={() => router.back()}
+          onPress={() => router.push('/done-deals' as any)}
         >
           <ThemedText style={styles.backButtonText}>Go Back</ThemedText>
         </TouchableOpacity>
@@ -186,6 +186,7 @@ export default function DoneDealsDetail() {
     <ThemedView style={[styles.container, { backgroundColor }]}>
       <NavigationHeader
         title="Done Deal Detail"
+        backPath="/done-deals"
         rightComponent={
           <TouchableOpacity
             style={[

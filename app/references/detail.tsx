@@ -97,6 +97,24 @@ export default function ReferenceDetailScreen() {
   const textColor = useThemeColor({}, 'text');
   const cardColor = useThemeColor({}, 'surface');
 
+  // Debug effect to log button visibility conditions
+  useEffect(() => {
+    if (reference && !loading) {
+      console.log('=== BUTTON VISIBILITY DEBUG ===');
+      console.log('Reference ID:', reference.id);
+      console.log('Reference Status:', reference.status);
+      console.log('Is Received:', isReceived);
+      console.log('Is Given:', isGiven);
+      console.log('Current User ID:', currentUserId);
+      console.log('Receiver ID:', reference.receiverId);
+      console.log('Giver ID:', reference.giverId);
+      console.log('Available Statuses Count:', getAvailableStatuses().length);
+      console.log('Should show Update Status button:', isReceived && getAvailableStatuses().length > 0);
+      console.log('Should show Edit/Delete buttons:', isGiven && reference?.status === 'pending');
+      console.log('==============================');
+    }
+  }, [reference, loading, isReceived, isGiven, currentUserId]);
+
   useEffect(() => {
     const fetchReferenceDetail = async () => {
       try {
@@ -134,16 +152,23 @@ export default function ReferenceDetailScreen() {
           setReference(data);
           
           // Determine if this is a received or given reference
-          if (data.receiverId === memberId) {
+          // Use Number() to ensure type consistency in comparison
+          const dataReceiverId = Number(data.receiverId);
+          const dataGiverId = Number(data.giverId);
+          const userMemberId = Number(memberId);
+          
+          console.log('Comparing IDs - receiverId:', dataReceiverId, 'giverId:', dataGiverId, 'memberId:', userMemberId);
+          
+          if (dataReceiverId === userMemberId) {
             console.log('This is a RECEIVED reference');
             setIsReceived(true);
             setIsGiven(false);
-          } else if (data.giverId === memberId) {
+          } else if (dataGiverId === userMemberId) {
             console.log('This is a GIVEN reference');
             setIsReceived(false);
             setIsGiven(true);
           } else {
-            console.log('User is neither giver nor receiver');
+            console.log('User is neither giver nor receiver - receiverId:', dataReceiverId, 'giverId:', dataGiverId, 'memberId:', userMemberId);
           }
         } catch (apiError) {
           console.log('API fetch failed, trying cached data...', apiError);
@@ -157,11 +182,15 @@ export default function ReferenceDetailScreen() {
             if (foundReference) {
               console.log('Found reference in API cache:', JSON.stringify(foundReference, null, 2));
               setReference(foundReference);
-              // Set isReceived/isGiven flags
-              if (foundReference.receiverId === memberId) {
+              // Set isReceived/isGiven flags with type conversion
+              const foundReceiverId = Number(foundReference.receiverId);
+              const foundGiverId = Number(foundReference.giverId);
+              const userMemberId = Number(memberId);
+              
+              if (foundReceiverId === userMemberId) {
                 setIsReceived(true);
                 setIsGiven(false);
-              } else if (foundReference.giverId === memberId) {
+              } else if (foundGiverId === userMemberId) {
                 setIsReceived(false);
                 setIsGiven(true);
               }
@@ -178,11 +207,15 @@ export default function ReferenceDetailScreen() {
             if (foundReference) {
               console.log('Found reference in cache:', JSON.stringify(foundReference, null, 2));
               setReference(foundReference);
-              // Set isReceived/isGiven flags
-              if (foundReference.receiverId === memberId) {
+              // Set isReceived/isGiven flags with type conversion
+              const foundReceiverId = Number(foundReference.receiverId);
+              const foundGiverId = Number(foundReference.giverId);
+              const userMemberId = Number(memberId);
+              
+              if (foundReceiverId === userMemberId) {
                 setIsReceived(true);
                 setIsGiven(false);
-              } else if (foundReference.giverId === memberId) {
+              } else if (foundGiverId === userMemberId) {
                 setIsReceived(false);
                 setIsGiven(true);
               }
@@ -206,12 +239,19 @@ export default function ReferenceDetailScreen() {
               } else if (foundReference.type === 'given') {
                 setIsReceived(false);
                 setIsGiven(true);
-              } else if (foundReference.receiverId === memberId) {
-                setIsReceived(true);
-                setIsGiven(false);
-              } else if (foundReference.giverId === memberId) {
-                setIsReceived(false);
-                setIsGiven(true);
+              } else {
+                // Use type conversion for ID comparison
+                const legacyReceiverId = Number(foundReference.receiverId);
+                const legacyGiverId = Number(foundReference.giverId);
+                const userMemberId = Number(memberId);
+                
+                if (legacyReceiverId === userMemberId) {
+                  setIsReceived(true);
+                  setIsGiven(false);
+                } else if (legacyGiverId === userMemberId) {
+                  setIsReceived(false);
+                  setIsGiven(true);
+                }
               }
               return;
             }
@@ -267,7 +307,7 @@ export default function ReferenceDetailScreen() {
                 text1: 'Success',
                 text2: 'Reference deleted successfully',
               });
-              router.back();
+              router.push('/(tabs)/references' as any);
             } catch (error) {
               console.error('Failed to delete reference', error);
               Toast.show({
@@ -358,6 +398,7 @@ export default function ReferenceDetailScreen() {
     const availableStatuses = getAvailableStatuses();
     console.log('Current status:', reference?.status);
     console.log('Available statuses:', availableStatuses);
+    console.log('Is Received:', isReceived, 'Is Given:', isGiven);
     
     if (availableStatuses.length === 0) {
       Toast.show({
@@ -393,7 +434,7 @@ export default function ReferenceDetailScreen() {
         <ThemedText style={styles.errorText}>Reference not found</ThemedText>
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: colors.primary }]}
-          onPress={() => router.back()}
+          onPress={() => router.push('/(tabs)/references' as any)}
         >
           <ThemedText style={styles.backButtonText}>Go Back</ThemedText>
         </TouchableOpacity>
@@ -457,25 +498,8 @@ export default function ReferenceDetailScreen() {
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>
       <NavigationHeader 
-        title="Reference Detail" 
-        rightComponent={
-          isGiven && reference?.status === 'pending' ? (
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity
-                style={[styles.headerButton, { backgroundColor: colors.primary }]}
-                onPress={handleEdit}
-              >
-                <IconSymbol name="pencil" size={16} color="white" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.headerButton, { backgroundColor: colors.error }]}
-                onPress={handleDelete}
-              >
-                <IconSymbol name="trash" size={16} color="white" />
-              </TouchableOpacity>
-            </View>
-          ) : null
-        }
+        title="Reference Detail"
+        backPath="/(tabs)/references"
       />
       <ScrollView
         style={styles.scrollView}
@@ -637,7 +661,7 @@ export default function ReferenceDetailScreen() {
         )}
       </ScrollView>
 
-      {/* Action Buttons */}
+      {/* Action Buttons - Received references can only update status, Given references can only edit when pending */}
       {isReceived && getAvailableStatuses().length > 0 ? (
         <View style={[styles.actionContainer, { backgroundColor: cardColor, borderColor: colors.border }]}>
           <TouchableOpacity
@@ -665,6 +689,17 @@ export default function ReferenceDetailScreen() {
             <IconSymbol name="trash" size={20} color="white" />
             <ThemedText style={[styles.actionButtonText, { color: 'white' }]}>Delete</ThemedText>
           </TouchableOpacity>
+        </View>
+      ) : (isReceived || isGiven) ? (
+        <View style={[styles.infoContainer, { backgroundColor: cardColor, borderColor: colors.border }]}>
+          <IconSymbol name="info.circle" size={18} color={colors.icon} />
+          <ThemedText style={[styles.infoText, { color: colors.icon }]}>
+            {isReceived && getAvailableStatuses().length === 0 
+              ? 'This reference status cannot be updated further'
+              : isGiven && reference?.status !== 'pending'
+              ? 'Only pending references can be edited or deleted'
+              : 'No actions available for this reference'}
+          </ThemedText>
         </View>
       ) : null}
 
@@ -844,6 +879,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
+  infoContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    padding: 16,
+    gap: 12,
+    borderTopWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoText: {
+    fontSize: 13,
+    textAlign: 'center',
+    flex: 1,
+  },
   sectionContainer: {
     marginBottom: 20,
   },
@@ -933,11 +985,16 @@ const styles = StyleSheet.create({
     height: 6,
   },
   headerButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   modalOverlay: {
     flex: 1,

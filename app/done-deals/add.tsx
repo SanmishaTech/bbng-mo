@@ -5,7 +5,7 @@ import { NavigationHeader } from '@/components/NavigationHeader';
 export default function DoneDealsAdd() {
   return (
     <>
-      <NavigationHeader title="Add Done Deal"/>
+      <NavigationHeader title="Add Done Deal" backPath="/done-deals" />
       <DoneDealForm />
     </>
   );

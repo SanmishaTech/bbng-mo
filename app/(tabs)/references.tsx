@@ -1,20 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  FlatList,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { useThemeColor } from '@/hooks/useThemeColor';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useThemeColor } from '@/hooks/useThemeColor';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  FlatList,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 interface Reference {
   id: string;
@@ -27,12 +26,15 @@ interface Reference {
   relationship: string;
   notes: string;
   dateAdded: string;
+  urgency?: string;
+  status?: string;
 }
 
 export default function ReferencesTab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [references, setReferences] = useState<Reference[]>([]);
   const [selectedTab, setSelectedTab] = useState<'all' | 'given' | 'received'>('all');
+  const isInitialMount = React.useRef(true);
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -45,44 +47,36 @@ export default function ReferencesTab() {
     loadReferences();
   }, []);
 
+  // Reload references when tab comes into focus (after navigating back)
+  useFocusEffect(
+    React.useCallback(() => {
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        console.log('[References Tab] Skipping reload on initial mount');
+        return;
+      }
+      
+      console.log('[References Tab] Tab focused - reloading references');
+      loadReferences();
+    }, [])
+  );
+
   const loadReferences = async () => {
     try {
-      const stored = await AsyncStorage.getItem('references');
-      if (stored) {
-        setReferences(JSON.parse(stored));
+      console.log('[References Tab] Loading references...');
+      
+      // Use the same cache key as the main references index page
+      const cachedData = await AsyncStorage.getItem('references_cache');
+      if (cachedData) {
+        console.log('[References Tab] Using cached reference data');
+        setReferences(JSON.parse(cachedData));
       } else {
-        // Sample data for demonstration
-        const sampleReferences: Reference[] = [
-          {
-            id: '1',
-            title: 'John Smith - Software Engineer',
-            type: 'given',
-            company: 'Tech Corp',
-            contact: 'John Smith',
-            email: 'john@techcorp.com',
-            phone: '+1234567890',
-            relationship: 'Former colleague',
-            notes: 'Excellent team player and technical skills',
-            dateAdded: '2024-01-15',
-          },
-          {
-            id: '2',
-            title: 'Sarah Johnson - HR Manager',
-            type: 'received',
-            company: 'Business Inc',
-            contact: 'Sarah Johnson',
-            email: 'sarah@business.com',
-            phone: '+0987654321',
-            relationship: 'Previous manager',
-            notes: 'Very professional and supportive',
-            dateAdded: '2024-01-20',
-          },
-        ];
-        setReferences(sampleReferences);
-        await AsyncStorage.setItem('references', JSON.stringify(sampleReferences));
+        console.log('[References Tab] No cached data found, using empty state');
+        setReferences([]);
       }
     } catch (error) {
-      console.error('Error loading references:', error);
+      console.error('[References Tab] Error loading references:', error);
+      setReferences([]);
     }
   };
 
@@ -97,12 +91,41 @@ export default function ReferencesTab() {
   const handleReferencePress = (reference: Reference) => {
     router.push(`/references/detail?id=${reference.id}`);
   };
-
+                                                                      
   const handleAddReference = () => {
     router.push('/references/add');
   };
 
+  // Format status display name
+  const formatStatusDisplay = (status?: string) => {
+    if (!status) return 'PENDING';
+    const lowerStatus = status.toLowerCase();
+    if (lowerStatus === 'business done') {
+      return 'MARK DONE DEAL';
+    }
+    return status.toUpperCase();
+  };
+
+  // Get status badge color
+  const getStatusColor = (status?: string) => {
+    if (!status) return colors.warning;
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return colors.warning;
+      case 'contacted':
+        return colors.info;
+      case 'business done':
+        return colors.success;
+      case 'rejected':
+        return colors.error;
+      default:
+        return colors.primary;
+    }
+  };
+
   function renderReference({ item }: { item: Reference }) {
+    const statusColor = getStatusColor(item.status);
+    
     return (
       <TouchableOpacity
         style={[styles.referenceCard, { backgroundColor: cardColor, borderColor: colors.border }]}
@@ -112,12 +135,22 @@ export default function ReferencesTab() {
           <ThemedText type="defaultSemiBold" style={styles.referenceTitle}>
             {item.title}
           </ThemedText>
-          <View style={[
-            styles.typeBadge,
-            { backgroundColor: item.type === 'given' ? colors.success : colors.info }
-          ]}>
-            <ThemedText style={[styles.typeBadgeText, { color: 'white' }]}>
-              {item.type.toUpperCase()}
+          <View style={styles.badgeContainer}>
+            <View style={[
+              styles.typeBadge,
+              { backgroundColor: item.type === 'given' ? colors.success : colors.info }
+            ]}>
+              <ThemedText style={[styles.typeBadgeText, { color: 'white' }]}>
+                {item.type.toUpperCase()}
+              </ThemedText>
+            </View>
+          </View>
+        </View>
+        <View style={styles.statusRow}>
+          <View style={[styles.statusBadge, { backgroundColor: statusColor + '20', borderColor: statusColor }]}>
+            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+            <ThemedText style={[styles.statusText, { color: statusColor }]}>
+              {formatStatusDisplay(item.status)}
             </ThemedText>
           </View>
         </View>
@@ -154,14 +187,6 @@ export default function ReferencesTab() {
 
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <ThemedText type="title" style={styles.headerTitle}>References</ThemedText>
-        <ThemedText style={styles.headerSubtitle}>
-          Manage your professional references
-        </ThemedText>
-      </View>
-
       {/* Search Bar */}
       <View style={[styles.searchContainer, { backgroundColor: cardColor, borderColor: colors.border }]}>
         <IconSymbol name="magnifyingglass" size={20} color={colors.icon} />
@@ -214,22 +239,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    paddingTop: 60,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-  },
-  headerTitle: {
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    opacity: 0.7,
-  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    margin: 16,
+    marginHorizontal: 16,
+    marginTop: 60,
+    marginBottom: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
@@ -286,6 +301,33 @@ const styles = StyleSheet.create({
   typeBadgeText: {
     fontSize: 10,
     fontWeight: 'bold',
+  },
+  badgeContainer: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 6,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   referenceCompany: {
     fontSize: 14,

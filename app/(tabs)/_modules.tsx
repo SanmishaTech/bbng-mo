@@ -1,17 +1,16 @@
+import { IconSymbol } from '@/components/ui/IconSymbol';
+import { Colors } from '@/constants/Colors';
+import { useAuth } from '@/contexts/AuthContext';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
   ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface Module {
   id: string;
@@ -24,165 +23,61 @@ interface Module {
 }
 
 const modules: Module[] = [
-  // Core Modules
   {
-    id: 'meetings',
-    name: 'Meetings',
-    route: '/modules/meetings',
-    icon: 'calendar',
-    category: 'Core',
-    description: 'View and manage chapter meetings',
+    id: 'states',
+    name: 'States',
+    route: '/modules/states',
+    icon: 'map.fill',
+    category: 'Modules',
+    description: 'Manage states and regions',
+  },
+  {
+    id: 'regions',
+    name: 'Regions',
+    route: '/modules/regions',
+    icon: 'globe',
+    category: 'Modules',
+    description: 'Manage geographical regions',
+  },
+  {
+    id: 'locations',
+    name: 'Locations',
+    route: '/modules/locations',
+    icon: 'mappin.and.ellipse',
+    category: 'Modules',
+    description: 'Manage location assignments',
+  },
+  {
+    id: 'categories',
+    name: 'Categories',
+    route: '/modules/categories',
+    icon: 'tag.fill',
+    category: 'Modules',
+    description: 'Manage business categories',
+  },
+  {
+    id: 'subcategories',
+    name: 'Sub-Categories',
+    route: '/modules/subcategories',
+    icon: 'tag',
+    category: 'Modules',
+    description: 'Manage business sub-categories',
+  },
+  {
+    id: 'packages',
+    name: 'Packages',
+    route: '/modules/packages',
+    icon: 'shippingbox.fill',
+    category: 'Modules',
+    description: 'Manage membership packages and pricing',
   },
   {
     id: 'chapters',
     name: 'Chapters',
     route: '/modules/chapters',
-    icon: 'building.2',
-    category: 'Core',
-    description: 'Manage chapters and transactions',
-  },
-  {
-    id: 'onetoone',
-    name: 'One-to-One',
-    route: '/modules/onetoone',
-    icon: 'person.2',
-    category: 'Core',
-    description: 'Schedule one-to-one meetings',
-  },
-  
-  // Member Management
-  {
-    id: 'members',
-    name: 'Members',
-    route: '/modules/members',
-    icon: 'person.3',
-    category: 'Members',
-    description: 'View and manage members',
-  },
-  {
-    id: 'member-search',
-    name: 'Member Search',
-    route: '/modules/members/search',
-    icon: 'magnifyingglass',
-    category: 'Members',
-    description: 'Search for members',
-  },
-  {
-    id: 'visitors',
-    name: 'Visitors',
-    route: '/modules/visitors',
-    icon: 'person.badge.plus',
-    category: 'Members',
-    description: 'Manage chapter visitors',
-  },
-  
-  // Communication
-  {
-    id: 'messages',
-    name: 'Messages',
-    route: '/modules/messages',
-    icon: 'envelope',
-    category: 'Communication',
-    description: 'View announcements and messages',
-  },
-  {
-    id: 'trainings',
-    name: 'Trainings',
-    route: '/modules/trainings',
-    icon: 'book',
-    category: 'Communication',
-    description: 'View training sessions',
-  },
-  
-  // Business
-  {
-    id: 'requirements',
-    name: 'Requirements',
-    route: '/modules/requirements',
-    icon: 'list.bullet',
-    category: 'Business',
-    description: 'Manage business requirements',
-  },
-  {
-    id: 'powerteams',
-    name: 'Power Teams',
-    route: '/modules/powerteams',
-    icon: 'person.3.fill',
-    category: 'Business',
-    description: 'Manage power team groups',
-  },
-  
-  // Reports
-  {
-    id: 'member-reports',
-    name: 'Member Reports',
-    route: '/modules/reports/members',
-    icon: 'chart.bar',
-    category: 'Reports',
-    description: 'View member performance reports',
-  },
-  {
-    id: 'transaction-reports',
-    name: 'Transaction Reports',
-    route: '/modules/reports/transactions',
-    icon: 'dollarsign.circle',
-    category: 'Reports',
-    description: 'View financial transactions',
-  },
-  {
-    id: 'membership-reports',
-    name: 'Membership Reports',
-    route: '/modules/reports/memberships',
-    icon: 'doc.text',
-    category: 'Reports',
-    description: 'View membership status',
-  },
-  
-  // Admin Only
-  {
-    id: 'zones',
-    name: 'Zones',
-    route: '/modules/admin/zones',
-    icon: 'map',
-    category: 'Admin',
-    roles: ['admin'],
-    description: 'Manage geographical zones',
-  },
-  {
-    id: 'categories',
-    name: 'Categories',
-    route: '/modules/admin/categories',
-    icon: 'tag',
-    category: 'Admin',
-    roles: ['admin'],
-    description: 'Manage business categories',
-  },
-  {
-    id: 'packages',
-    name: 'Packages',
-    route: '/modules/admin/packages',
-    icon: 'gift',
-    category: 'Admin',
-    roles: ['admin'],
-    description: 'Manage membership packages',
-  },
-  {
-    id: 'memberships',
-    name: 'Memberships',
-    route: '/modules/admin/memberships',
-    icon: 'creditcard',
-    category: 'Admin',
-    roles: ['admin'],
-    description: 'Manage member subscriptions',
-  },
-  {
-    id: 'users',
-    name: 'Users',
-    route: '/modules/admin/users',
-    icon: 'person.crop.circle',
-    category: 'Admin',
-    roles: ['admin'],
-    description: 'Manage user accounts',
+    icon: 'book.fill',
+    category: 'Modules',
+    description: 'Manage chapters with zones and locations',
   },
 ];
 

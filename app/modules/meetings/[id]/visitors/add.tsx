@@ -72,7 +72,7 @@ export default function AddVisitorScreen() {
       setMeeting(response.data);
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to fetch meeting data', [
-        { text: 'OK', onPress: () => router.back() },
+        { text: 'OK', onPress: () => router.push('/modules/meetings' as any) },
       ]);
     } finally {
       setLoading(false);
@@ -112,7 +112,7 @@ export default function AddVisitorScreen() {
     try {
       await post(`/api/chapter-meetings/${id}/visitors`, formData);
       Alert.alert('Success', 'Visitor added successfully', [
-        { text: 'OK', onPress: () => router.back() },
+        { text: 'OK', onPress: () => router.replace('/modules/meetings' as any) },
       ]);
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to add visitor');
@@ -136,7 +136,7 @@ export default function AddVisitorScreen() {
           end={{ x: 1, y: 1 }}
         >
           <View style={styles.headerContent}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <TouchableOpacity onPress={() => router.push('/modules/meetings' as any)} style={styles.backButton}>
               <IconSymbol name="chevron.left" size={24} color="white" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Add Visitor</Text>
@@ -166,7 +166,7 @@ export default function AddVisitorScreen() {
         end={{ x: 1, y: 1 }}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.push('/modules/meetings')} style={styles.backButton}>
             <IconSymbol name="chevron.left" size={24} color="white" />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
@@ -306,7 +306,7 @@ export default function AddVisitorScreen() {
         <View style={styles.buttonRow}>
           <TouchableOpacity
             style={[styles.cancelButton, { borderColor: colors.border }]}
-            onPress={() => router.back()}
+            onPress={() => router.push('/modules/meetings' as any)}
             disabled={saving}
             activeOpacity={0.8}
           >

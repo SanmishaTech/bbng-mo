@@ -423,7 +423,7 @@ const VisitorForm = () => {
             text1: "Error",
             text2: "Failed to load visitor data",
           });
-          router.back();
+          router.push('/modules/visitors' as any);
         } finally {
           setLoading(false);
         }
@@ -543,7 +543,7 @@ const VisitorForm = () => {
         end={{ x: 1, y: 1 }}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.push('/modules/visitors' as any)} style={styles.backButton}>
             <IconSymbol name="chevron.left" size={24} color="white" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
@@ -1016,7 +1016,7 @@ const VisitorForm = () => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => router.push('/modules/visitors' as any)}
               style={styles.cancelButton}
               disabled={loading}
             >

@@ -11,7 +11,9 @@ import React, { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
+  FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -19,8 +21,6 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Modal,
-  FlatList,
 } from "react-native";
 // Removed Tamagui imports that were causing issues
 import Toast from "react-native-toast-message";
@@ -602,6 +602,7 @@ const ReferenceForm = () => {
     <ThemedView style={{ flex: 1 }}>
       <NavigationHeader
         title={isEditMode ? "Edit Reference" : "Add Reference"}
+        backPath="/(tabs)/references"
         rightComponent={
           <TouchableOpacity
             onPress={handleSubmit(onSubmit)}
@@ -1134,7 +1135,7 @@ const ReferenceForm = () => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => router.push('/(tabs)/references' as any)}
               style={styles.cancelButton}
               disabled={loading}
             >

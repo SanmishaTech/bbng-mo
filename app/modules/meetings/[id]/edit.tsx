@@ -86,7 +86,7 @@ export default function EditMeetingScreen() {
       });
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to fetch meeting data', [
-        { text: 'OK', onPress: () => router.back() },
+        { text: 'OK', onPress: () => router.push('/modules/meetings' as any) },
       ]);
     } finally {
       setLoading(false);
@@ -130,7 +130,7 @@ export default function EditMeetingScreen() {
 
       await apiService.put(`/api/chapter-meetings/${id}`, payload);
       Alert.alert('Success', 'Meeting updated successfully', [
-        { text: 'OK', onPress: () => router.back() },
+        { text: 'OK', onPress: () => router.replace('/modules/meetings' as any) },
       ]);
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to update meeting');
@@ -169,7 +169,7 @@ export default function EditMeetingScreen() {
           end={{ x: 1, y: 1 }}
         >
           <View style={styles.headerContent}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <TouchableOpacity onPress={() => router.push('/modules/meetings' as any)} style={styles.backButton}>
               <IconSymbol name="chevron.left" size={24} color="white" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Edit Meeting</Text>
@@ -197,7 +197,7 @@ export default function EditMeetingScreen() {
         end={{ x: 1, y: 1 }}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.push('/modules/meetings')} style={styles.backButton}>
             <IconSymbol name="chevron.left" size={24} color="white" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Meeting</Text>
