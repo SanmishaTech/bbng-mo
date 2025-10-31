@@ -9,6 +9,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   FlatList,
+  Platform,
   StyleSheet,
   TextInput,
   TouchableOpacity,
@@ -275,7 +276,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 100,
+    paddingBottom: Platform.OS === 'android' ? 80 : 100,
   },
   referenceCard: {
     padding: 16,

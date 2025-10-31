@@ -108,6 +108,8 @@ export default function LoginScreen() {
                     styles.input,
                     {
                       borderColor: errors.email ? colors.error : colors.border,
+                      backgroundColor: colors.surface,
+                      color: colors.text,
                     },
                   ]}
                   placeholder="Enter your email"
@@ -141,6 +143,8 @@ export default function LoginScreen() {
                       borderColor: errors.password
                         ? colors.error
                         : colors.border,
+                      backgroundColor: colors.surface,
+                      color: colors.text,
                     },
                   ]}
                   placeholder="Enter your password"

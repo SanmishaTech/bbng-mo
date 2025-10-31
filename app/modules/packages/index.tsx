@@ -10,34 +10,74 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   FlatList,
   Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { Picker } from '@react-native-picker/picker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function PackagesListScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const insets = useSafeAreaInsets();
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [packageToDelete, setPackageToDelete] = useState<{ id: number; name: string } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalPackages, setTotalPackages] = useState(0);
+  const pageSize = 10;
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const loadPackages = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      console.log('Loading packages from API');
-      const response = await getPackages(1, 100, '', 'packageName', 'asc');
+      console.log('Loading packages with search:', debouncedSearchQuery, 'filter:', activeFilter, 'type:', typeFilter, 'page:', currentPage);
+      const response = await getPackages(currentPage, pageSize, debouncedSearchQuery, 'packageName', 'asc');
       console.log('Packages loaded successfully:', response.data?.packages?.length || 0, 'packages');
-      setPackages(response.data?.packages || []);
+      
+      // Apply client-side filters for type and active status
+      let filteredPackages = response.data?.packages || [];
+      
+      if (activeFilter !== 'all') {
+        const isActive = activeFilter === 'true';
+        filteredPackages = filteredPackages.filter(pkg => pkg.active === isActive);
+      }
+      
+      if (typeFilter !== 'all') {
+        const isVenueFee = typeFilter === 'venue';
+        filteredPackages = filteredPackages.filter(pkg => pkg.isVenueFee === isVenueFee);
+      }
+      
+      setPackages(filteredPackages);
+      setTotalPages(response.data?.totalPages || 1);
+      setTotalPackages(response.data?.totalPackages || filteredPackages.length);
     } catch (err) {
       console.error('Error loading packages:', err);
       setError('Failed to load packages');
@@ -50,7 +90,7 @@ export default function PackagesListScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [debouncedSearchQuery, activeFilter, typeFilter, currentPage]);
 
   useEffect(() => {
     loadPackages();
@@ -164,6 +204,7 @@ export default function PackagesListScreen() {
       >
         <View style={styles.cardHeader}>
           <View style={styles.cardTitleRow}>
+            <Text style={styles.packageIcon}>📦</Text>
             <Text style={[styles.packageName, { color: colors.text }]}>
               {item.packageName}
             </Text>
@@ -173,15 +214,16 @@ export default function PackagesListScreen() {
               styles.statusBadge,
               {
                 backgroundColor: item.active
-                  ? colors.success + '20'
-                  : colors.error + '20',
+                  ? '#4CAF50' + '20'
+                  : '#F44336' + '20',
               },
             ]}
           >
+            <View style={[styles.statusDot, { backgroundColor: item.active ? '#4CAF50' : '#F44336' }]} />
             <Text
               style={[
                 styles.statusText,
-                { color: item.active ? colors.success : colors.error },
+                { color: item.active ? '#4CAF50' : '#F44336' },
               ]}
             >
               {item.active ? 'Active' : 'Inactive'}
@@ -191,6 +233,7 @@ export default function PackagesListScreen() {
 
         <View style={styles.detailsGrid}>
           <View style={styles.detailRow}>
+            <Text style={styles.detailIcon}>⏱️</Text>
             <Text style={[styles.detailLabel, { color: colors.placeholder }]}>
               Duration:
             </Text>
@@ -200,6 +243,7 @@ export default function PackagesListScreen() {
           </View>
 
           <View style={styles.detailRow}>
+            <Text style={styles.detailIcon}>🏷️</Text>
             <Text style={[styles.detailLabel, { color: colors.placeholder }]}>
               Type:
             </Text>
@@ -209,7 +253,7 @@ export default function PackagesListScreen() {
                 {
                   backgroundColor: item.isVenueFee
                     ? colors.primary + '20'
-                    : colors.text + '10',
+                    : '#9333EA' + '20',
                 },
               ]}
             >
@@ -217,7 +261,7 @@ export default function PackagesListScreen() {
                 style={[
                   styles.typeBadgeText,
                   {
-                    color: item.isVenueFee ? colors.primary : colors.text,
+                    color: item.isVenueFee ? colors.primary : '#9333EA',
                   },
                 ]}
               >
@@ -228,6 +272,7 @@ export default function PackagesListScreen() {
 
           {item.chapterName && (
             <View style={styles.detailRow}>
+              <Text style={styles.detailIcon}>🏘️</Text>
               <Text style={[styles.detailLabel, { color: colors.placeholder }]}>
                 Chapter:
               </Text>
@@ -273,14 +318,16 @@ export default function PackagesListScreen() {
           <TouchableOpacity
             style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
             onPress={() => router.push(`/modules/packages/${item.id}/edit` as any)}
+            activeOpacity={0.7}
           >
-            <Text style={styles.primaryBtnText}>Edit</Text>
+            <Text style={styles.primaryBtnText}>✏️ Edit</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.ghostDangerBtn, { borderColor: '#F44336' }]}
             onPress={() => handleDelete(item.id, item.packageName)}
+            activeOpacity={0.7}
           >
-            <Text style={styles.ghostDangerText}>Delete</Text>
+            <Text style={styles.ghostDangerText}>🗑️ Delete</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -288,7 +335,7 @@ export default function PackagesListScreen() {
   }
 
   const content = () => {
-    if (loading) {
+    if (loading && !refreshing) {
       return (
         <View style={styles.listContainer}>
           <SkeletonCard />
@@ -303,25 +350,80 @@ export default function PackagesListScreen() {
     }
 
     return (
-      <FlatList
-        data={packages}
-        renderItem={renderItem}
-        keyExtractor={(item) => String(item.id)}
-        style={styles.list}
-        contentContainerStyle={[
-          styles.listContainer,
-          packages.length === 0 && { flex: 1 },
-        ]}
-        ListEmptyComponent={EmptyState}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      />
+      <>
+        <FlatList
+          data={packages}
+          renderItem={renderItem}
+          keyExtractor={(item) => String(item.id)}
+          style={styles.list}
+          contentContainerStyle={[
+            styles.listContainer,
+            { paddingBottom: (Platform.OS === 'ios' ? 100 : 80) + insets.bottom },
+            packages.length === 0 && { flex: 1 },
+          ]}
+          ListEmptyComponent={EmptyState}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        />
+        
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <View style={[styles.paginationContainer, { backgroundColor: colors.card }]}>
+            <TouchableOpacity
+              style={[
+                styles.paginationBtn,
+                { backgroundColor: currentPage === 1 ? colors.surface : colors.primary },
+              ]}
+              onPress={() => setCurrentPage(currentPage - 1)}
+              disabled={currentPage === 1}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.paginationBtnText,
+                  { color: currentPage === 1 ? colors.placeholder : 'white' },
+                ]}
+              >
+                Previous
+              </Text>
+            </TouchableOpacity>
+            
+            <View style={styles.paginationInfo}>
+              <Text style={[styles.paginationText, { color: colors.text }]}>
+                Page {currentPage} of {totalPages}
+              </Text>
+              <Text style={[styles.paginationSubtext, { color: colors.placeholder }]}>
+                {totalPackages} total
+              </Text>
+            </View>
+            
+            <TouchableOpacity
+              style={[
+                styles.paginationBtn,
+                { backgroundColor: currentPage === totalPages ? colors.surface : colors.primary },
+              ]}
+              onPress={() => setCurrentPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.paginationBtnText,
+                  { color: currentPage === totalPages ? colors.placeholder : 'white' },
+                ]}
+              >
+                Next
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </>
     );
   };
 
@@ -341,10 +443,100 @@ export default function PackagesListScreen() {
       <NavigationHeader
         title="Packages"
         rightComponent={rightComponent}
-        backPath="/(tabs)"
+        backPath="/(tabs)/_modules"
       />
 
       <View style={[styles.contentContainer, { backgroundColor }]}>
+        {/* Search and Filter Bar */}
+        <View style={styles.searchFilterContainer}>
+          <View style={[styles.searchContainer, { backgroundColor: colors.card }]}>
+            <TextInput
+              style={[styles.searchInput, { color: colors.text }]}
+              placeholder="Search packages..."
+              placeholderTextColor={colors.placeholder}
+              value={searchQuery}
+              onChangeText={(text) => {
+                setSearchQuery(text);
+                setCurrentPage(1);
+              }}
+            />
+          </View>
+          
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              {
+                backgroundColor: showFilters ? colors.primary : colors.card,
+              },
+            ]}
+            onPress={() => setShowFilters(!showFilters)}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.filterButtonText,
+                { color: showFilters ? 'white' : colors.text },
+              ]}
+            >
+              {showFilters ? '✓' : '☰'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Filter Options */}
+        {showFilters && (
+          <View style={[styles.filterContainer, { backgroundColor: colors.card }]}>
+            <Text style={[styles.filterLabel, { color: colors.text }]}>Status:</Text>
+            <View style={[styles.pickerContainer, { borderColor: colors.border }]}>
+              <Picker
+                selectedValue={activeFilter}
+                onValueChange={(value) => {
+                  setActiveFilter(value);
+                  setCurrentPage(1);
+                }}
+                style={[styles.picker, { color: colors.text }]}
+              >
+                <Picker.Item label="All Packages" value="all" />
+                <Picker.Item label="Active Only" value="true" />
+                <Picker.Item label="Inactive Only" value="false" />
+              </Picker>
+            </View>
+            
+            <Text style={[styles.filterLabel, { color: colors.text, marginTop: 12 }]}>Type:</Text>
+            <View style={[styles.pickerContainer, { borderColor: colors.border }]}>
+              <Picker
+                selectedValue={typeFilter}
+                onValueChange={(value) => {
+                  setTypeFilter(value);
+                  setCurrentPage(1);
+                }}
+                style={[styles.picker, { color: colors.text }]}
+              >
+                <Picker.Item label="All Types" value="all" />
+                <Picker.Item label="Venue Fee" value="venue" />
+                <Picker.Item label="Membership" value="membership" />
+              </Picker>
+            </View>
+            
+            {(searchQuery || activeFilter !== 'all' || typeFilter !== 'all') && (
+              <TouchableOpacity
+                style={[styles.clearFilterBtn, { backgroundColor: colors.surface }]}
+                onPress={() => {
+                  setSearchQuery('');
+                  setActiveFilter('all');
+                  setTypeFilter('all');
+                  setCurrentPage(1);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.clearFilterText, { color: colors.text }]}>
+                  Clear Filters
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         {content()}
       </View>
 
@@ -444,20 +636,36 @@ const styles = StyleSheet.create({
   cardTitleRow: {
     flex: 1,
     marginRight: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  packageIcon: {
+    fontSize: 20,
   },
   packageName: {
     fontSize: 18,
     fontWeight: '800',
     letterSpacing: 0.3,
+    flex: 1,
   },
   statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 12,
+    gap: 6,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
   detailsGrid: {
     gap: 10,
@@ -466,7 +674,10 @@ const styles = StyleSheet.create({
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+  },
+  detailIcon: {
+    fontSize: 14,
   },
   detailLabel: {
     fontSize: 14,
@@ -531,6 +742,7 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -547,6 +759,7 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 0,
     backgroundColor: 'rgba(244, 67, 54, 0.1)',
   },
@@ -661,5 +874,115 @@ const styles = StyleSheet.create({
   modalButtonText: {
     fontWeight: '700',
     fontSize: 15,
+  },
+  // Search and Filter styles
+  searchFilterContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+  searchContainer: {
+    flex: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  searchInput: {
+    paddingVertical: 12,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  filterButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  filterButtonText: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  filterContainer: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  filterLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  picker: {
+    height: 50,
+  },
+  clearFilterBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  clearFilterText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Pagination styles
+  paginationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  paginationBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    minWidth: 90,
+    alignItems: 'center',
+  },
+  paginationBtnText: {
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  paginationInfo: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  paginationText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  paginationSubtext: {
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

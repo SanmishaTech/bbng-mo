@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, Text } from 'react-native';
+import { View, StyleSheet, Animated } from 'react-native';
+import { ThemedText } from '@/components/ThemedText';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -84,27 +85,26 @@ export function EnhancedStatCard({
               size={14}
               color={getTrendColor()}
             />
-            <Text style={[styles.trendText, { color: getTrendColor() }]}>
+            <ThemedText style={[styles.trendText, { color: getTrendColor() }]}>
               {Math.abs(Number(percentageChange))}%
-            </Text>
+            </ThemedText>
           </View>
         )}
       </View>
 
       <View style={styles.content}>
-        <Text style={[styles.title, { color: colors.placeholder }]}>{title}</Text>
+        <ThemedText style={[styles.title, { color: colors.placeholder }]}>{title}</ThemedText>
         <View style={styles.valueContainer}>
-          <Animated.Text style={[styles.value, { color: colors.text }]}>
+          <ThemedText style={[styles.value, { color: colors.text }]}>
             {prefix}
-            {animatedValue.addListener(({ value }) => value.toFixed(0))}
             {value.toLocaleString()}
             {suffix}
-          </Animated.Text>
+          </ThemedText>
         </View>
         {previousValue !== undefined && (
-          <Text style={[styles.comparison, { color: colors.placeholder }]}>
+          <ThemedText style={[styles.comparison, { color: colors.placeholder }]}>
             vs. {prefix}{previousValue.toLocaleString()}{suffix} previous
-          </Text>
+          </ThemedText>
         )}
       </View>
     </View>

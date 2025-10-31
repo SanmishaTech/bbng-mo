@@ -415,7 +415,7 @@ export default function VisitorsScreen() {
         end={{ x: 1, y: 1 }}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.push('/(tabs)' as any)} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/_modules' as any)} style={styles.backButton}>
             <IconSymbol name="chevron.left" size={24} color="white" />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>

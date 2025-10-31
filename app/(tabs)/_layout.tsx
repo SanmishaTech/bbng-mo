@@ -1,6 +1,7 @@
 import { Tabs } from "expo-router";
 import React from "react";
 import { Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HapticTab } from "@/components/HapticTab";
 import { IconSymbol } from "@/components/ui/IconSymbol";
@@ -10,14 +11,15 @@ import { useColorScheme } from "@/hooks/useColorScheme";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
+  const colors = Colors[colorScheme];
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.tabIconDefault,
-        headerShown: true,
+        headerShown: false,
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
         tabBarStyle: {
@@ -25,13 +27,18 @@ export default function TabLayout() {
             ios: {
               position: "absolute",
             },
+            android: {
+              elevation: 8,
+            },
             default: {},
           }),
           backgroundColor: colors.card,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          height: 84,
-          paddingBottom: Platform.OS === "ios" ? 30 : 10,
+          // Dynamic height based on safe area insets - prevent clipping
+          height: Platform.OS === "ios" ? 84 : Math.max(68, 60 + insets.bottom),
+          // Proper padding to avoid system navigation bar and clipping
+          paddingBottom: Platform.OS === "ios" ? Math.max(insets.bottom, 20) : Math.max(insets.bottom, 8),
           paddingTop: 10,
         },
         tabBarLabelStyle: {
@@ -63,6 +70,20 @@ export default function TabLayout() {
             <IconSymbol
               size={focused ? 30 : 26}
               name="square.grid.2x2.fill"
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="members"
+        options={{
+          title: "Members",
+          headerShown: false,
+          tabBarIcon: ({ color, focused }) => (
+            <IconSymbol
+              size={focused ? 30 : 26}
+              name="person.2.fill"
               color={color}
             />
           ),

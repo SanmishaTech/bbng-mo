@@ -117,9 +117,15 @@ export default function AddLocationScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={[styles.formCard, { backgroundColor: colors.card }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Location Details
-            </Text>
+            {/* Form Header */}
+            <View style={styles.formHeader}>
+              <Text style={[styles.formTitle, { color: colors.text }]}>
+                Location Information
+              </Text>
+              <Text style={[styles.formSubtitle, { color: colors.placeholder }]}>
+                Create a new location and optionally assign it to a region
+              </Text>
+            </View>
 
             <View style={styles.fieldGroup}>
               <Text style={[styles.label, { color: colors.text }]}>
@@ -134,7 +140,7 @@ export default function AddLocationScreen() {
                     borderColor: nameError ? '#F44336' : colors.border,
                   },
                 ]}
-                placeholder="Enter location name"
+                placeholder="e.g., Mumbai Office, Delhi Branch"
                 placeholderTextColor={colors.placeholder}
                 value={locationName}
                 onChangeText={(text) => {
@@ -143,15 +149,23 @@ export default function AddLocationScreen() {
                 }}
                 editable={!loading}
                 autoCapitalize="words"
+                autoFocus
               />
-              {nameError && (
-                <Text style={styles.errorText}>{nameError}</Text>
+              {nameError ? (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorIcon}>⚠️</Text>
+                  <Text style={styles.errorText}>{nameError}</Text>
+                </View>
+              ) : (
+                <Text style={[styles.helperText, { color: colors.placeholder }]}>
+                  Enter a descriptive name for this location
+                </Text>
               )}
             </View>
 
             <View style={styles.fieldGroup}>
               <Text style={[styles.label, { color: colors.text }]}>
-                Region (Optional)
+                🌍 Region (Optional)
               </Text>
               {loadingZones ? (
                 <View style={[styles.loadingContainer, { backgroundColor: colors.surface }]}>
@@ -161,23 +175,28 @@ export default function AddLocationScreen() {
                   </Text>
                 </View>
               ) : (
-                <View style={[styles.pickerContainer, { borderColor: colors.border }]}>
-                  <Picker
-                    selectedValue={selectedZoneId}
-                    onValueChange={(value) => setSelectedZoneId(value)}
-                    style={[styles.picker, { color: colors.text }]}
-                    enabled={!loading}
-                  >
-                    <Picker.Item label="-- Select a Region (Optional) --" value={null} />
-                    {zones.map((zone) => (
-                      <Picker.Item
-                        key={zone.id}
-                        label={zone.name}
-                        value={zone.id}
-                      />
-                    ))}
-                  </Picker>
-                </View>
+                <>
+                  <View style={[styles.pickerContainer, { borderColor: colors.border }]}>
+                    <Picker
+                      selectedValue={selectedZoneId}
+                      onValueChange={(value) => setSelectedZoneId(value)}
+                      style={[styles.picker, { color: colors.text }]}
+                      enabled={!loading}
+                    >
+                      <Picker.Item label="-- Select a Region (Optional) --" value={null} />
+                      {zones.map((zone) => (
+                        <Picker.Item
+                          key={zone.id}
+                          label={zone.name}
+                          value={zone.id}
+                        />
+                      ))}
+                    </Picker>
+                  </View>
+                  <Text style={[styles.helperText, { color: colors.placeholder }]}>
+                    Assign this location to a region for better organization
+                  </Text>
+                </>
               )}
             </View>
 
@@ -185,10 +204,11 @@ export default function AddLocationScreen() {
               <TouchableOpacity
                 style={[
                   styles.cancelButton,
-                  { borderColor: colors.border },
+                  { borderColor: colors.border, backgroundColor: colors.surface },
                 ]}
                 onPress={() => router.push('/modules/locations' as any)}
                 disabled={loading}
+                activeOpacity={0.7}
               >
                 <Text style={[styles.cancelButtonText, { color: colors.text }]}>
                   Cancel
@@ -205,11 +225,15 @@ export default function AddLocationScreen() {
                 ]}
                 onPress={handleSubmit}
                 disabled={loading}
+                activeOpacity={0.7}
               >
                 {loading ? (
-                  <ActivityIndicator color="white" size="small" />
+                  <View style={styles.loadingBtnContainer}>
+                    <ActivityIndicator color="white" size="small" />
+                    <Text style={[styles.submitButtonText, { marginLeft: 8 }]}>Creating...</Text>
+                  </View>
                 ) : (
-                  <Text style={styles.submitButtonText}>Create Location</Text>
+                  <Text style={styles.submitButtonText}>✓ Create Location</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -240,37 +264,67 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  sectionTitle: {
-    fontSize: 18,
+  formHeader: {
+    marginBottom: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  formTitle: {
+    fontSize: 20,
     fontWeight: '700',
-    marginBottom: 20,
+    marginBottom: 6,
     letterSpacing: 0.3,
   },
+  formSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
   fieldGroup: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   label: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
-    marginBottom: 8,
+    marginBottom: 10,
     letterSpacing: 0.3,
   },
   required: {
     color: '#F44336',
   },
   input: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
     fontWeight: '500',
   },
-  errorText: {
+  helperText: {
     fontSize: 12,
     marginTop: 6,
+    fontWeight: '400',
+    lineHeight: 16,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    gap: 6,
+  },
+  errorIcon: {
+    fontSize: 14,
+  },
+  errorText: {
+    fontSize: 12,
     fontWeight: '500',
     color: '#F44336',
+    flex: 1,
+  },
+  loadingBtnContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   pickerContainer: {
     borderWidth: 1,
@@ -300,7 +354,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: 14,
-    borderWidth: 2,
+    borderWidth: 1,
     alignItems: 'center',
   },
   cancelButtonText: {

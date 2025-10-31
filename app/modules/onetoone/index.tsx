@@ -523,7 +523,7 @@ export default function OneToOneListScreen() {
       <NavigationHeader
         title="One-to-One Meetings"
         rightComponent={rightComponent}
-        backPath="/(tabs)"
+        backPath="/(tabs)/_modules"
       />
 
       <View style={[styles.contentContainer, { backgroundColor }]}>

@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Button } from 'react-native';
+import { View, Button } from 'react-native';
+import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 
 export default function ReferenceDetail({ route, navigation }) {
@@ -7,8 +8,8 @@ export default function ReferenceDetail({ route, navigation }) {
 
   return (
     <ThemedView>
-      <Text>{reference.title}</Text>
-      <Text>{reference.details}</Text>
+      <ThemedText>{reference.title}</ThemedText>
+      <ThemedText>{reference.details}</ThemedText>
       <Button title="Edit Reference" onPress={() => {}} />
     </ThemedView>
   );

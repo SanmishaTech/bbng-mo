@@ -30,7 +30,7 @@ export function NavigationHeader({
 }: NavigationHeaderProps) {
   const router = useRouter();
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
+  const colors = Colors[colorScheme];
 
   const backgroundColor = useThemeColor({}, "background");
   const textColor = useThemeColor({}, "text");
@@ -39,15 +39,11 @@ export function NavigationHeader({
     if (onBackPress) {
       onBackPress();
     } else if (backPath) {
-      // Use explicit back path if provided to avoid navigation loops
+      // Use explicit back path if provided
       router.push(backPath as any);
     } else {
-      // Fallback to canGoBack check
-      if (router.canGoBack()) {
-        router.back();
-      } else {
-        router.push("/(tabs)" as any);
-      }
+      // Default behavior: go back in navigation history
+      router.back();
     }
   };
 

@@ -12,7 +12,12 @@
     "build:android": "node ./scripts/build-android.js",
     "build:android:wait": "node ./scripts/build-android.js preview --wait",
     "build:android:preview": "node ./scripts/build-android.js preview",
-    "build:android:production": "node ./scripts/build-android.js production"
+    "build:android:production": "node ./scripts/build-android.js production",
+    "build:ios": "node ./scripts/build-ios.js",
+    "build:ios:wait": "node ./scripts/build-ios.js preview --wait",
+    "build:ios:preview": "node ./scripts/build-ios.js preview",
+    "build:ios:simulator": "node ./scripts/build-ios.js preview-simulator",
+    "build:ios:production": "node ./scripts/build-ios.js production"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
@@ -49,6 +54,7 @@
     "expo-linear-gradient": "^14.1.5",
     "expo-linking": "~7.1.7",
     "expo-router": "~5.1.7",
+    "expo-sharing": "~13.1.5",
     "expo-splash-screen": "~0.30.10",
     "expo-status-bar": "~2.2.3",
     "expo-symbols": "~0.4.5",

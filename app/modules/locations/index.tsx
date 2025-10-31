@@ -10,33 +10,58 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   FlatList,
   Modal,
+  Platform,
   RefreshControl,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { Picker } from '@react-native-picker/picker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function LocationsListScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const insets = useSafeAreaInsets();
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [locationToDelete, setLocationToDelete] = useState<{ id: number; name: string } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalLocations, setTotalLocations] = useState(0);
+  const pageSize = 10;
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const loadLocations = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      console.log('Loading locations from API');
-      const response = await getLocations(1, 100, '', 'location', 'asc', 'all');
+      console.log('Loading locations with search:', debouncedSearchQuery, 'filter:', activeFilter, 'page:', currentPage);
+      const response = await getLocations(currentPage, pageSize, debouncedSearchQuery, 'location', 'asc', activeFilter);
       console.log('Locations loaded successfully:', response.data?.locations?.length || 0, 'locations');
       setLocations(response.data?.locations || []);
+      setTotalPages(response.data?.totalPages || 1);
+      setTotalLocations(response.data?.totalLocations || 0);
     } catch (err) {
       console.error('Error loading locations:', err);
       setError('Failed to load locations');
@@ -49,7 +74,7 @@ export default function LocationsListScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [debouncedSearchQuery, activeFilter, currentPage]);
 
   useEffect(() => {
     loadLocations();
@@ -169,7 +194,7 @@ export default function LocationsListScreen() {
       >
         <View style={styles.cardHeader}>
           <View style={styles.cardTitleRow}>
-            <Text style={[styles.cardTitle, { color: colors.text }]}>
+            <Text style={[styles.cardId, { color: colors.placeholder }]}>
               #{item.id}
             </Text>
             <Text style={[styles.locationName, { color: colors.text }]}>
@@ -182,15 +207,16 @@ export default function LocationsListScreen() {
                 styles.statusBadge,
                 {
                   backgroundColor: item.active
-                    ? colors.success + '20'
-                    : colors.error + '20',
+                    ? '#4CAF50' + '20'
+                    : '#F44336' + '20',
                 },
               ]}
             >
+              <View style={[styles.statusDot, { backgroundColor: item.active ? '#4CAF50' : '#F44336' }]} />
               <Text
                 style={[
                   styles.statusText,
-                  { color: item.active ? colors.success : colors.error },
+                  { color: item.active ? '#4CAF50' : '#F44336' },
                 ]}
               >
                 {item.active ? 'Active' : 'Inactive'}
@@ -201,9 +227,7 @@ export default function LocationsListScreen() {
 
         {item.zoneName && (
           <View style={styles.zoneRow}>
-            <Text style={[styles.zoneLabel, { color: colors.placeholder }]}>
-              Region:
-            </Text>
+            <Text style={styles.zoneIcon}>🌍</Text>
             <Text style={[styles.zoneName, { color: colors.text }]}>
               {item.zoneName}
             </Text>
@@ -214,14 +238,16 @@ export default function LocationsListScreen() {
           <TouchableOpacity
             style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
             onPress={() => router.push(`/modules/locations/${item.id}/edit` as any)}
+            activeOpacity={0.7}
           >
-            <Text style={styles.primaryBtnText}>Edit</Text>
+            <Text style={styles.primaryBtnText}>✏️ Edit</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.ghostDangerBtn, { borderColor: '#F44336' }]}
             onPress={() => handleDelete(item.id, item.location)}
+            activeOpacity={0.7}
           >
-            <Text style={styles.ghostDangerText}>Delete</Text>
+            <Text style={styles.ghostDangerText}>🗑️ Delete</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -229,7 +255,7 @@ export default function LocationsListScreen() {
   }
 
   const content = () => {
-    if (loading) {
+    if (loading && !refreshing) {
       return (
         <View style={styles.listContainer}>
           <SkeletonCard />
@@ -244,25 +270,80 @@ export default function LocationsListScreen() {
     }
 
     return (
-      <FlatList
-        data={locations}
-        renderItem={renderItem}
-        keyExtractor={(item) => String(item.id)}
-        style={styles.list}
-        contentContainerStyle={[
-          styles.listContainer,
-          locations.length === 0 && { flex: 1 },
-        ]}
-        ListEmptyComponent={EmptyState}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      />
+      <>
+        <FlatList
+          data={locations}
+          renderItem={renderItem}
+          keyExtractor={(item) => String(item.id)}
+          style={styles.list}
+          contentContainerStyle={[
+            styles.listContainer,
+            { paddingBottom: (Platform.OS === 'ios' ? 100 : 80) + insets.bottom },
+            locations.length === 0 && { flex: 1 },
+          ]}
+          ListEmptyComponent={EmptyState}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        />
+        
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <View style={[styles.paginationContainer, { backgroundColor: colors.card }]}>
+            <TouchableOpacity
+              style={[
+                styles.paginationBtn,
+                { backgroundColor: currentPage === 1 ? colors.surface : colors.primary },
+              ]}
+              onPress={() => setCurrentPage(currentPage - 1)}
+              disabled={currentPage === 1}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.paginationBtnText,
+                  { color: currentPage === 1 ? colors.placeholder : 'white' },
+                ]}
+              >
+                Previous
+              </Text>
+            </TouchableOpacity>
+            
+            <View style={styles.paginationInfo}>
+              <Text style={[styles.paginationText, { color: colors.text }]}>
+                Page {currentPage} of {totalPages}
+              </Text>
+              <Text style={[styles.paginationSubtext, { color: colors.placeholder }]}>
+                {totalLocations} total
+              </Text>
+            </View>
+            
+            <TouchableOpacity
+              style={[
+                styles.paginationBtn,
+                { backgroundColor: currentPage === totalPages ? colors.surface : colors.primary },
+              ]}
+              onPress={() => setCurrentPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.paginationBtnText,
+                  { color: currentPage === totalPages ? colors.placeholder : 'white' },
+                ]}
+              >
+                Next
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </>
     );
   };
 
@@ -282,10 +363,83 @@ export default function LocationsListScreen() {
       <NavigationHeader
         title="Locations"
         rightComponent={rightComponent}
-        backPath="/(tabs)"
+        backPath="/(tabs)/_modules"
       />
 
       <View style={[styles.contentContainer, { backgroundColor }]}>
+        {/* Search and Filter Bar */}
+        <View style={styles.searchFilterContainer}>
+          <View style={[styles.searchContainer, { backgroundColor: colors.card }]}>
+            <TextInput
+              style={[styles.searchInput, { color: colors.text }]}
+              placeholder="Search locations..."
+              placeholderTextColor={colors.placeholder}
+              value={searchQuery}
+              onChangeText={(text) => {
+                setSearchQuery(text);
+                setCurrentPage(1);
+              }}
+            />
+          </View>
+          
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              {
+                backgroundColor: showFilters ? colors.primary : colors.card,
+              },
+            ]}
+            onPress={() => setShowFilters(!showFilters)}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.filterButtonText,
+                { color: showFilters ? 'white' : colors.text },
+              ]}
+            >
+              {showFilters ? '✓' : '☰'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Filter Options */}
+        {showFilters && (
+          <View style={[styles.filterContainer, { backgroundColor: colors.card }]}>
+            <Text style={[styles.filterLabel, { color: colors.text }]}>Status:</Text>
+            <View style={[styles.pickerContainer, { borderColor: colors.border }]}>
+              <Picker
+                selectedValue={activeFilter}
+                onValueChange={(value) => {
+                  setActiveFilter(value);
+                  setCurrentPage(1);
+                }}
+                style={[styles.picker, { color: colors.text }]}
+              >
+                <Picker.Item label="All Locations" value="all" />
+                <Picker.Item label="Active Only" value="true" />
+                <Picker.Item label="Inactive Only" value="false" />
+              </Picker>
+            </View>
+            
+            {(searchQuery || activeFilter !== 'all') && (
+              <TouchableOpacity
+                style={[styles.clearFilterBtn, { backgroundColor: colors.surface }]}
+                onPress={() => {
+                  setSearchQuery('');
+                  setActiveFilter('all');
+                  setCurrentPage(1);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.clearFilterText, { color: colors.text }]}>
+                  Clear Filters
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         {content()}
       </View>
 
@@ -386,43 +540,55 @@ const styles = StyleSheet.create({
   cardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     flex: 1,
   },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+  cardId: {
+    fontSize: 12,
+    fontWeight: '600',
     letterSpacing: 0.3,
-    opacity: 0.6,
   },
   locationName: {
-    fontSize: 17,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '700',
     letterSpacing: 0.3,
     flex: 1,
   },
   statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 12,
+    gap: 6,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
   zoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
-    gap: 8,
+    gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
   },
-  zoneLabel: {
+  zoneIcon: {
     fontSize: 14,
-    fontWeight: '600',
   },
   zoneName: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
   },
   actionsRow: {
     flexDirection: 'row',
@@ -576,5 +742,114 @@ const styles = StyleSheet.create({
   modalButtonText: {
     fontWeight: '700',
     fontSize: 15,
+  },
+  // Search and Filter styles
+  searchFilterContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+  searchContainer: {
+    flex: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  searchInput: {
+    paddingVertical: 12,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  filterButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  filterButtonText: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  filterContainer: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  filterLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  picker: {
+    height: 50,
+  },
+  clearFilterBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  clearFilterText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Pagination styles
+  paginationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  paginationBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    minWidth: 90,
+    alignItems: 'center',
+  },
+  paginationBtnText: {
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  paginationInfo: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  paginationText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  paginationSubtext: {
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

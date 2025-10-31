@@ -4,7 +4,7 @@ export default function ModulesLayout() {
   return (
     <Stack
       screenOptions={{
-        headerShown: true,
+        headerShown: false,
       }}
     >
       <Stack.Screen 
@@ -45,6 +45,14 @@ export default function ModulesLayout() {
       />
       <Stack.Screen 
         name="packages" 
+        options={{ headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="members" 
+        options={{ headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="memberships" 
         options={{ headerShown: false }} 
       />
     </Stack>

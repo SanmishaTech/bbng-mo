@@ -13,21 +13,33 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { Picker } from '@react-native-picker/picker';
 
 export default function ChaptersListScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [filteredChapters, setFilteredChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [chapterToDelete, setChapterToDelete] = useState<{ id: number; name: string } | null>(null);
+  
+  // Search and Filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   const loadChapters = useCallback(async () => {
     setLoading(true);
@@ -54,6 +66,36 @@ export default function ChaptersListScreen() {
   useEffect(() => {
     loadChapters();
   }, [loadChapters]);
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+      setCurrentPage(1); // Reset to first page on search
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Filter and paginate chapters
+  useEffect(() => {
+    let filtered = [...chapters];
+
+    // Apply search filter
+    if (debouncedSearchQuery) {
+      const query = debouncedSearchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (chapter) =>
+          chapter.name?.toLowerCase().includes(query) ||
+          chapter.meetingday?.toLowerCase().includes(query) ||
+          chapter.location?.location?.toLowerCase().includes(query) ||
+          chapter.zones?.name?.toLowerCase().includes(query) ||
+          chapter.venue?.toLowerCase().includes(query)
+      );
+    }
+
+    setFilteredChapters(filtered);
+  }, [chapters, debouncedSearchQuery]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -87,6 +129,11 @@ export default function ChaptersListScreen() {
       });
       setDeleteModalVisible(false);
     }
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setCurrentPage(1);
   };
 
   const SkeletonCard = () => (
@@ -158,15 +205,19 @@ export default function ChaptersListScreen() {
         ]}
       >
         <View style={styles.cardHeader}>
-          <Text style={[styles.chapterName, { color: colors.text }]}>
-            {item.name}
-          </Text>
+          <View style={styles.cardTitleRow}>
+            <Text style={styles.chapterIcon}>🏛️</Text>
+            <Text style={[styles.chapterName, { color: colors.text }]} numberOfLines={2}>
+              {item.name}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.detailsGrid}>
           <View style={styles.detailRow}>
+            <Text style={styles.detailIcon}>📅</Text>
             <Text style={[styles.detailLabel, { color: colors.placeholder }]}>
-              Meeting Day:
+              Meeting:
             </Text>
             <Text style={[styles.detailValue, { color: colors.text }]}>
               {item.meetingday}
@@ -175,10 +226,11 @@ export default function ChaptersListScreen() {
 
           {item.location?.location && (
             <View style={styles.detailRow}>
+              <Text style={styles.detailIcon}>📍</Text>
               <Text style={[styles.detailLabel, { color: colors.placeholder }]}>
                 Location:
               </Text>
-              <Text style={[styles.detailValue, { color: colors.text }]}>
+              <Text style={[styles.detailValue, { color: colors.text }]} numberOfLines={1}>
                 {item.location.location}
               </Text>
             </View>
@@ -186,10 +238,11 @@ export default function ChaptersListScreen() {
 
           {item.zones?.name && (
             <View style={styles.detailRow}>
+              <Text style={styles.detailIcon}>🌐</Text>
               <Text style={[styles.detailLabel, { color: colors.placeholder }]}>
                 Zone:
               </Text>
-              <Text style={[styles.detailValue, { color: colors.text }]}>
+              <Text style={[styles.detailValue, { color: colors.text }]} numberOfLines={1}>
                 {item.zones.name}
               </Text>
             </View>
@@ -197,6 +250,7 @@ export default function ChaptersListScreen() {
 
           {item.venue && (
             <View style={styles.detailRow}>
+              <Text style={styles.detailIcon}>🏛️</Text>
               <Text style={[styles.detailLabel, { color: colors.placeholder }]}>
                 Venue:
               </Text>
@@ -211,14 +265,16 @@ export default function ChaptersListScreen() {
           <TouchableOpacity
             style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
             onPress={() => router.push(`/modules/chapters/${item.id}/edit` as any)}
+            activeOpacity={0.7}
           >
-            <Text style={styles.primaryBtnText}>Edit</Text>
+            <Text style={styles.primaryBtnText} numberOfLines={1}>✏️ Edit</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.ghostDangerBtn, { borderColor: '#F44336' }]}
             onPress={() => handleDelete(item.id, item.name)}
+            activeOpacity={0.7}
           >
-            <Text style={styles.ghostDangerText}>Delete</Text>
+            <Text style={styles.ghostDangerText} numberOfLines={1}>🗑️ Delete</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -240,26 +296,87 @@ export default function ChaptersListScreen() {
       return <ErrorState />;
     }
 
+    // Calculate pagination
+    const totalItems = filteredChapters.length;
+    const totalPages = Math.ceil(totalItems / pageSize);
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginatedData = filteredChapters.slice(startIndex, endIndex);
+
     return (
-      <FlatList
-        data={chapters}
-        renderItem={renderItem}
-        keyExtractor={(item) => String(item.id)}
-        style={styles.list}
-        contentContainerStyle={[
-          styles.listContainer,
-          chapters.length === 0 && { flex: 1 },
-        ]}
-        ListEmptyComponent={EmptyState}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      />
+      <>
+        <FlatList
+          data={paginatedData}
+          renderItem={renderItem}
+          keyExtractor={(item) => String(item.id)}
+          style={styles.list}
+          contentContainerStyle={[
+            styles.listContainer,
+            paginatedData.length === 0 && { flex: 1 },
+          ]}
+          ListEmptyComponent={EmptyState}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        />
+        
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <View style={[styles.paginationContainer, { backgroundColor: colors.card }]}>
+            <TouchableOpacity
+              style={[
+                styles.paginationBtn,
+                { backgroundColor: currentPage === 1 ? colors.surface : colors.primary },
+              ]}
+              onPress={() => setCurrentPage(currentPage - 1)}
+              disabled={currentPage === 1}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.paginationBtnText,
+                  { color: currentPage === 1 ? colors.placeholder : 'white' },
+                ]}
+              >
+                Previous
+              </Text>
+            </TouchableOpacity>
+            
+            <View style={styles.paginationInfo}>
+              <Text style={[styles.paginationText, { color: colors.text }]}>
+                Page {currentPage} of {totalPages}
+              </Text>
+              <Text style={[styles.paginationSubtext, { color: colors.placeholder }]}>
+                {totalItems} total
+              </Text>
+            </View>
+            
+            <TouchableOpacity
+              style={[
+                styles.paginationBtn,
+                { backgroundColor: currentPage === totalPages ? colors.surface : colors.primary },
+              ]}
+              onPress={() => setCurrentPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.paginationBtnText,
+                  { color: currentPage === totalPages ? colors.placeholder : 'white' },
+                ]}
+              >
+                Next
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </>
     );
   };
 
@@ -279,10 +396,35 @@ export default function ChaptersListScreen() {
       <NavigationHeader
         title="Chapters"
         rightComponent={rightComponent}
-        backPath="/(tabs)"
+        backPath="/(tabs)/_modules"
       />
 
       <View style={[styles.contentContainer, { backgroundColor }]}>
+        {/* Search Bar */}
+        <View style={styles.searchFilterContainer}>
+          <View style={[styles.searchContainer, { backgroundColor: colors.card }]}>
+            <TextInput
+              style={[styles.searchInput, { color: colors.text }]}
+              placeholder="Search chapters, locations, zones..."
+              placeholderTextColor={colors.placeholder}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+          
+          {searchQuery && (
+            <TouchableOpacity
+              style={[styles.filterButton, { backgroundColor: colors.card }]}
+              onPress={clearFilters}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.filterButtonText, { color: colors.text }]}>
+                ✕
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
         {content()}
       </View>
 
@@ -376,10 +518,19 @@ const styles = StyleSheet.create({
   cardHeader: {
     marginBottom: 16,
   },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  chapterIcon: {
+    fontSize: 20,
+  },
   chapterName: {
     fontSize: 18,
     fontWeight: '800',
     letterSpacing: 0.3,
+    flex: 1,
   },
   detailsGrid: {
     gap: 10,
@@ -389,6 +540,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
+  },
+  detailIcon: {
+    fontSize: 14,
   },
   detailLabel: {
     fontSize: 14,
@@ -410,6 +564,7 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -426,6 +581,7 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 0,
     backgroundColor: 'rgba(244, 67, 54, 0.1)',
   },
@@ -531,6 +687,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -540,5 +697,87 @@ const styles = StyleSheet.create({
   modalButtonText: {
     fontWeight: '700',
     fontSize: 15,
+  },
+  // Search styles
+  searchFilterContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  searchContainer: {
+    flex: 1,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  searchInput: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  filterButton: {
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 50,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  filterButtonText: {
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  // Pagination styles
+  paginationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.1)',
+    gap: 12,
+  },
+  paginationBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+    minWidth: 90,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  paginationBtnText: {
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  paginationInfo: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  paginationText: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  paginationSubtext: {
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

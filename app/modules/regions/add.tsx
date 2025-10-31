@@ -104,6 +104,16 @@ export default function AddRegionScreen() {
               { backgroundColor: colors.card, borderColor: colors.border },
             ]}
           >
+            {/* Form Header */}
+            <View style={styles.formHeader}>
+              <Text style={[styles.formTitle, { color: colors.text }]}>
+                Region Information
+              </Text>
+              <Text style={[styles.formSubtitle, { color: colors.placeholder }]}>
+                Create a new region to organize chapters and members
+              </Text>
+            </View>
+
             {/* Region Name Input */}
             <View style={styles.fieldGroup}>
               <Text style={[styles.label, { color: colors.text }]}>
@@ -118,16 +128,24 @@ export default function AddRegionScreen() {
                     borderColor: errors.name ? '#F44336' : colors.border,
                   },
                 ]}
-                placeholder="Enter region name"
+                placeholder="e.g., North Region, South Region"
                 placeholderTextColor={colors.placeholder}
                 value={formData.name}
                 onChangeText={handleChange}
                 editable={!submitting}
                 autoCapitalize="words"
+                autoFocus
               />
-              {errors.name && (
-                <Text style={[styles.errorText, { color: '#F44336' }]}>
-                  {errors.name}
+              {errors.name ? (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorIcon}>⚠️</Text>
+                  <Text style={[styles.errorText, { color: '#F44336' }]}>
+                    {errors.name}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={[styles.helperText, { color: colors.placeholder }]}>
+                  Choose a descriptive name for this region
                 </Text>
               )}
             </View>
@@ -144,6 +162,7 @@ export default function AddRegionScreen() {
                 ]}
                 onPress={() => router.push('/modules/regions' as any)}
                 disabled={submitting}
+                activeOpacity={0.7}
               >
                 <Text style={[styles.ghostBtnText, { color: colors.text }]}>
                   Cancel
@@ -160,11 +179,15 @@ export default function AddRegionScreen() {
                 ]}
                 onPress={onSubmit}
                 disabled={submitting}
+                activeOpacity={0.7}
               >
                 {submitting ? (
-                  <ActivityIndicator color="white" size="small" />
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator color="white" size="small" />
+                    <Text style={[styles.primaryBtnText, { marginLeft: 8 }]}>Creating...</Text>
+                  </View>
                 ) : (
-                  <Text style={styles.primaryBtnText}>Create Region</Text>
+                  <Text style={styles.primaryBtnText}>✓ Create Region</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -196,30 +219,66 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
+  formHeader: {
+    marginBottom: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  formTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 6,
+    letterSpacing: 0.3,
+  },
+  formSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
   fieldGroup: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   label: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
-    marginBottom: 8,
+    marginBottom: 10,
     letterSpacing: 0.3,
   },
   required: {
     color: '#F44336',
   },
   input: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
     fontWeight: '500',
   },
-  errorText: {
+  helperText: {
     fontSize: 12,
     marginTop: 6,
+    fontWeight: '400',
+    lineHeight: 16,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    gap: 6,
+  },
+  errorIcon: {
+    fontSize: 14,
+  },
+  errorText: {
+    fontSize: 12,
     fontWeight: '500',
+    flex: 1,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionsRow: {
     flexDirection: 'row',

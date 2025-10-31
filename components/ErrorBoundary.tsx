@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { ThemedText } from '@/components/ThemedText';
 import { Colors } from '@/constants/Colors';
 
 interface Props {
@@ -35,16 +36,16 @@ export class ErrorBoundary extends React.Component<Props, State> {
       return (
         <View style={styles.container}>
           <View style={styles.content}>
-            <Text style={styles.title}>Something went wrong</Text>
-            <Text style={styles.message}>
+            <ThemedText style={styles.title}>Something went wrong</ThemedText>
+            <ThemedText style={styles.message}>
               An unexpected error occurred. Please try again.
-            </Text>
+            </ThemedText>
             
             {__DEV__ && this.state.error && (
               <View style={styles.errorDetails}>
-                <Text style={styles.errorText}>
+                <ThemedText style={styles.errorText}>
                   {this.state.error.toString()}
-                </Text>
+                </ThemedText>
               </View>
             )}
             
@@ -52,7 +53,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
               style={styles.button} 
               onPress={this.handleReset}
             >
-              <Text style={styles.buttonText}>Try Again</Text>
+              <ThemedText style={styles.buttonText}>Try Again</ThemedText>
             </TouchableOpacity>
           </View>
         </View>

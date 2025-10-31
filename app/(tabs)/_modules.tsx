@@ -1,16 +1,20 @@
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/contexts/UserRoleContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  Dimensions,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Module {
   id: string;
@@ -20,6 +24,7 @@ interface Module {
   category: string;
   roles?: string[]; // If specified, only these roles can access
   description?: string;
+  color: string; // Color for icon background and text
 }
 
 const modules: Module[] = [
@@ -28,56 +33,162 @@ const modules: Module[] = [
     name: 'States',
     route: '/modules/states',
     icon: 'map.fill',
-    category: 'Modules',
+    category: 'Location Management',
     description: 'Manage states and regions',
+    color: '#3B82F6', // Blue
   },
   {
     id: 'regions',
     name: 'Regions',
     route: '/modules/regions',
     icon: 'globe',
-    category: 'Modules',
+    category: 'Location Management',
     description: 'Manage geographical regions',
+    color: '#06B6D4', // Cyan
   },
   {
     id: 'locations',
     name: 'Locations',
     route: '/modules/locations',
     icon: 'mappin.and.ellipse',
-    category: 'Modules',
+    category: 'Location Management',
     description: 'Manage location assignments',
+    color: '#14B8A6', // Teal
   },
   {
     id: 'categories',
     name: 'Categories',
     route: '/modules/categories',
     icon: 'tag.fill',
-    category: 'Modules',
+    category: 'Business Data',
     description: 'Manage business categories',
+    color: '#EF4444', // Red
   },
   {
     id: 'subcategories',
     name: 'Sub-Categories',
     route: '/modules/subcategories',
     icon: 'tag',
-    category: 'Modules',
+    category: 'Business Data',
     description: 'Manage business sub-categories',
+    color: '#F59E0B', // Amber
   },
   {
     id: 'packages',
     name: 'Packages',
     route: '/modules/packages',
     icon: 'shippingbox.fill',
-    category: 'Modules',
+    category: 'Membership',
     description: 'Manage membership packages and pricing',
+    color: '#8B5CF6', // Purple
+  },
+  {
+    id: 'members',
+    name: 'Members',
+    route: '/modules/members',
+    icon: 'person.2.fill',
+    category: 'Membership',
+    description: 'Manage member information and accounts',
+    color: '#10B981', // Green
   },
   {
     id: 'chapters',
     name: 'Chapters',
     route: '/modules/chapters',
     icon: 'book.fill',
-    category: 'Modules',
+    category: 'Organization',
     description: 'Manage chapters with zones and locations',
+    color: '#6366F1', // Indigo
+  },
+  {
+    id: 'powerteams',
+    name: 'Power Teams',
+    route: '/modules/powerteams',
+    icon: 'person.3.fill',
+    category: 'Organization',
+    description: 'Manage power teams and their categories',
+    color: '#EC4899', // Pink
+  },
+  {
+    id: 'trainings',
+    name: 'Trainings',
+    route: '/modules/trainings',
+    icon: 'book.closed.fill',
+    category: 'Education',
+    description: 'Manage training schedules and sessions',
+    color: '#A855F7', // Violet
+  },
+  {
+    id: 'sitesettings',
+    name: 'Site Settings',
+    route: '/modules/sitesettings',
+    icon: 'gearshape.fill',
+    category: 'Configuration',
+    description: 'Configure application settings and preferences',
+    color: '#F97316', // Orange
+  },
+  {
+    id: 'messages',
+    name: 'Messages',
+    route: '/modules/messages',
+    icon: 'envelope.fill',
+    category: 'Communication',
+    description: 'Manage messages and announcements',
+    color: '#F43F5E', // Rose
+  },
+  {
+    id: 'visitors',
+    name: 'Visitors',
+    route: '/modules/visitors',
+    icon: 'person.3',
+    category: 'Events',
+    description: 'Manage chapter visitors',
+    color: '#0EA5E9', // Sky Blue
+  },
+  {
+    id: 'meetings',
+    name: 'Meetings',
+    route: '/modules/meetings',
+    icon: 'calendar',
+    category: 'Events',
+    description: 'Manage chapter meetings',
+    color: '#FF9500', // Orange
+  },
+  {
+    id: 'onetoone',
+    name: 'One to One',
+    route: '/modules/onetoone',
+    icon: 'person.2',
+    category: 'Networking',
+    description: 'Manage one-to-one meeting requests',
+    color: '#FACC15', // Yellow
+  },
+  {
+    id: 'references',
+    name: 'Give Reference',
+    route: '/references',
+    icon: 'person.badge.plus',
+    category: 'Business',
+    description: 'Give and manage references',
+    color: '#10B981', // Green
+  },
+  {
+    id: 'donedeals',
+    name: 'Done Deals',
+    route: '/done-deals',
+    icon: 'checkmark.circle.fill',
+    category: 'Business',
+    description: 'Mark and track completed deals',
+    color: '#22C55E', // Success Green
+  },
+  {
+    id: 'requirements',
+    name: 'Requirements',
+    route: '/modules/requirements',
+    icon: 'list.bullet.clipboard',
+    category: 'Business',
+    description: 'View member requirements',
+    color: '#8B5CF6', // Purple
   },
 ];
 
@@ -86,14 +197,49 @@ export default function ModulesScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
+  const { hasChapterAccess } = useUserRole();
+  const insets = useSafeAreaInsets();
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
-  // Filter modules based on user role
+  // Define module accessibility based on chapter association
+  const commonModules = [
+    'onetoone',      // One To One - available to all users
+    'references',    // Give Reference - available to all users
+    'donedeals',     // Done Deals - available to all users
+    'requirements',  // Requirements - available to all users
+  ];
+  
+  const chapterModules = [
+    'visitors',    // Visitors - only for users with chapter
+    'meetings',    // Meetings - only for users with chapter
+  ];
+  // Note: give-reference, done-deal, and performance are in tabs, not modules
+
+  // Filter modules based on user role and chapter association
   const filteredModules = modules.filter(module => {
+    // Admin users can see all modules
+    if (user?.role === 'admin') {
+      return true;
+    }
+
+    // Check if module has specific role restrictions
     if (module.roles && module.roles.length > 0) {
       return module.roles.includes(user?.role || '');
     }
-    return true;
+
+    // For regular users:
+    // 1. Always show common modules
+    if (commonModules.includes(module.id)) {
+      return true;
+    }
+    
+    // 2. Show chapter-specific modules only if user has a chapter
+    if (chapterModules.includes(module.id)) {
+      return hasChapterAccess;
+    }
+
+    // 3. Hide all other modules from regular users
+    return false;
   });
 
   // Get unique categories
@@ -114,92 +260,61 @@ export default function ModulesScreen() {
   }, {} as Record<string, Module[]>);
 
   function renderModuleCard(item: Module) {
+    const screenWidth = Dimensions.get('window').width;
+    const padding = 16 * 2; // Total horizontal padding from scrollContent
+    const gap = 12; // Gap between cards
+    const cardWidth = (screenWidth - padding - gap * 2) / 3;
+
     return (
       <TouchableOpacity 
         key={item.id}
-        style={[styles.moduleCard, { backgroundColor: colors.card, borderColor: colors.border }]} 
+        style={[
+          styles.gridCard, 
+          { 
+            backgroundColor: colors.card, 
+            borderColor: colors.border,
+            width: cardWidth,
+          }
+        ]} 
         onPress={() => router.push(item.route as any)}
         activeOpacity={0.7}
       >
-        <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
-          <IconSymbol name={item.icon as any} size={28} color={colors.primary} />
+        <View style={[styles.gridIconContainer, { backgroundColor: item.color + '1A' }]}>
+          <IconSymbol name={item.icon as any} size={20} color={item.color} />
         </View>
-        <View style={styles.moduleInfo}>
-          <Text style={[styles.moduleName, { color: colors.text }]}>{item.name}</Text>
-          {item.description && (
-            <Text style={[styles.moduleDescription, { color: colors.placeholder }]} numberOfLines={2}>
-              {item.description}
-            </Text>
-          )}
-        </View>
-        <IconSymbol name="chevron.right" size={20} color={colors.icon} />
+        <Text style={[styles.gridModuleName, { color: colors.text }]} numberOfLines={2}>
+          {item.name}
+        </Text>
       </TouchableOpacity>
     );
   }
 
-  function renderCategorySection(category: string, categoryModules: Module[]) {
-    if (selectedCategory !== 'All') return null;
-    
-    return (
-      <View key={category} style={styles.categorySection}>
-        <Text style={[styles.categoryTitle, { color: colors.text }]}>{category}</Text>
-        {categoryModules.map(module => renderModuleCard(module))}
-      </View>
-    );
-  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.primary }]}>
-        <Text style={styles.headerTitle}>Modules</Text>
-        <Text style={styles.headerSubtitle}>Explore all features and tools</Text>
-      </View>
-      
-      {/* Category Filter */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        style={styles.categoryFilter}
-        contentContainerStyle={styles.categoryFilterContent}
-      >
-        {categories.map(category => (
-          <TouchableOpacity
-            key={category}
-            style={[
-              styles.categoryChip,
-              selectedCategory === category && { backgroundColor: colors.primary },
-              { borderColor: colors.border },
-            ]}
-            onPress={() => setSelectedCategory(category)}
-          >
-            <Text
-              style={[
-                styles.categoryChipText,
-                selectedCategory === category 
-                  ? { color: 'white' } 
-                  : { color: colors.text },
-              ]}
-            >
-              {category}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* Modules List */}
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { 
+            paddingTop: insets.top || 16,
+            paddingBottom: (Platform.OS === 'ios' ? 100 : 80) + insets.bottom
+          }
+        ]}
         showsVerticalScrollIndicator={false}
       >
-        {selectedCategory === 'All' ? (
-          Object.entries(groupedModules).map(([category, categoryModules]) =>
-            renderCategorySection(category, categoryModules)
-          )
-        ) : (
-          displayedModules.map(module => renderModuleCard(module))
-        )}
+        {/* Header */}
+        <View style={styles.headerSection}>
+          <Text style={[styles.title, { color: colors.text }]}>Modules</Text>
+          <Text style={[styles.subtitle, { color: colors.placeholder }]}>
+            Manage and access all available modules
+          </Text>
+        </View>
+
+        {/* Modules Grid */}
+        <View style={styles.gridContainer}>
+          {filteredModules.map(module => renderModuleCard(module))}
+        </View>
       </ScrollView>
     </View>
   );
@@ -209,125 +324,55 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    paddingTop: 60,
-    paddingBottom: 30,
-    paddingHorizontal: 24,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  headerTitle: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: 'white',
-    marginBottom: 6,
-    letterSpacing: 0.5,
-  },
-  headerSubtitle: {
-    fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.85)',
-    fontWeight: '500',
-  },
-  categoryFilter: {
-    maxHeight: 60,
-    marginTop: 16,
-  },
-  categoryFilterContent: {
-    paddingHorizontal: 20,
-    gap: 10,
-  },
-  categoryChip: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    backgroundColor: 'rgba(0,0,0,0.03)',
-  },
-  categoryChipText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
   scrollView: {
     flex: 1,
   },
-  listContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
-    paddingTop: 16,
-  },
-  categorySection: {
-    marginBottom: 28,
-  },
-  categoryTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    marginBottom: 14,
-    letterSpacing: 0.3,
-  },
-  moduleCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  scrollContent: {
     padding: 16,
-    marginBottom: 12,
-    borderRadius: 16,
-    borderWidth: 0,
+  },
+  headerSection: {
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 6,
+  },
+  subtitle: {
+    fontSize: 14,
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 32,
+  },
+  gridCard: {
+    minHeight: 96,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  iconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+  gridIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
   },
-  moduleInfo: {
-    flex: 1,
-    marginRight: 12,
-  },
-  moduleName: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 4,
-    letterSpacing: 0.2,
-  },
-  moduleDescription: {
-    fontSize: 13,
-    lineHeight: 18,
-    opacity: 0.75,
-  },
-  // Legacy styles kept for compatibility
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    marginBottom: 15,
-    borderRadius: 15,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  itemText: {
-    marginLeft: 15,
-    fontSize: 18,
+  gridModuleName: {
+    fontSize: 12,
     fontWeight: '600',
+    textAlign: 'center',
   },
 });

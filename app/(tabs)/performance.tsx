@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -23,6 +24,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 
@@ -31,6 +33,7 @@ export default function PerformanceDashboard() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
   const { roleInfo, loading: roleLoading, refreshRoleInfo } = usePerformance();
+  const insets = useSafeAreaInsets();
 
   // State management
   const [loading, setLoading] = useState(false);
@@ -285,6 +288,9 @@ export default function PerformanceDashboard() {
 
       <ScrollView
         style={styles.content}
+        contentContainerStyle={{
+          paddingBottom: Platform.OS === "ios" ? 100 : 80 + insets.bottom,
+        }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />

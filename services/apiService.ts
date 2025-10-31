@@ -112,6 +112,96 @@ class ApiService {
       body: data ? JSON.stringify(data) : undefined,
     });
   }
+
+  async postFormData<T>(endpoint: string, formData: FormData): Promise<T> {
+    const url = getApiUrl(endpoint);
+    const token = await this.getAuthToken();
+    
+    const headers: HeadersInit = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    // Don't set Content-Type for FormData, browser will set it with boundary
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body: formData,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw {
+          message: errorData.message || `HTTP error! status: ${response.status}`,
+          status: response.status,
+          code: errorData.code,
+        } as ApiError;
+      }
+
+      return await response.json();
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error.name === "AbortError") {
+        throw {
+          message: "Request timeout",
+          status: 408,
+        } as ApiError;
+      }
+      throw error;
+    }
+  }
+
+  async putFormData<T>(endpoint: string, formData: FormData): Promise<T> {
+    const url = getApiUrl(endpoint);
+    const token = await this.getAuthToken();
+    
+    const headers: HeadersInit = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    // Don't set Content-Type for FormData, browser will set it with boundary
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
+
+    try {
+      const response = await fetch(url, {
+        method: "PUT",
+        headers,
+        body: formData,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw {
+          message: errorData.message || `HTTP error! status: ${response.status}`,
+          status: response.status,
+          code: errorData.code,
+        } as ApiError;
+      }
+
+      return await response.json();
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error.name === "AbortError") {
+        throw {
+          message: "Request timeout",
+          status: 408,
+        } as ApiError;
+      }
+      throw error;
+    }
+  }
 }
 
 export const apiService = new ApiService();

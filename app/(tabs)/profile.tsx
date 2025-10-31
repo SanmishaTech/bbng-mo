@@ -6,7 +6,9 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -16,6 +18,7 @@ export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const insets = useSafeAreaInsets();
 
   const profileOptions = [
     {
@@ -47,6 +50,9 @@ export default function ProfileScreen() {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={{
+        paddingBottom: Platform.OS === 'ios' ? 100 : 80 + insets.bottom,
+      }}
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}

@@ -274,9 +274,19 @@ export default function EditRegionScreen() {
         >
           {/* Region Details Section */}
           <View style={[styles.section, { backgroundColor: colors.card }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Region Details
-            </Text>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionIcon}>
+                <Text style={styles.iconText}>🌍</Text>
+              </View>
+              <View style={styles.sectionTitleContainer}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  Region Details
+                </Text>
+                <Text style={[styles.sectionSubtitle, { color: colors.placeholder }]}>
+                  Update the region's basic information
+                </Text>
+              </View>
+            </View>
             
             <View style={styles.fieldGroup}>
               <Text style={[styles.label, { color: colors.text }]}>
@@ -301,8 +311,15 @@ export default function EditRegionScreen() {
                 editable={!submitting}
                 autoCapitalize="words"
               />
-              {nameError && (
-                <Text style={styles.errorText}>{nameError}</Text>
+              {nameError ? (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorIcon}>⚠️</Text>
+                  <Text style={styles.errorText}>{nameError}</Text>
+                </View>
+              ) : (
+                <Text style={[styles.helperText, { color: colors.placeholder }]}>
+                  This name will be used throughout the system
+                </Text>
               )}
             </View>
 
@@ -316,54 +333,81 @@ export default function EditRegionScreen() {
               ]}
               onPress={handleUpdateRegion}
               disabled={submitting}
+              activeOpacity={0.7}
             >
               {submitting ? (
-                <ActivityIndicator color="white" size="small" />
+                <View style={styles.loadingBtnContainer}>
+                  <ActivityIndicator color="white" size="small" />
+                  <Text style={[styles.primaryBtnText, { marginLeft: 8 }]}>Updating...</Text>
+                </View>
               ) : (
-                <Text style={styles.primaryBtnText}>Update Region</Text>
+                <Text style={styles.primaryBtnText}>✓ Update Region</Text>
               )}
             </TouchableOpacity>
           </View>
 
           {/* Roles Section */}
           <View style={[styles.section, { backgroundColor: colors.card }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Assigned Roles
-            </Text>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionIcon}>
+                <Text style={styles.iconText}>👥</Text>
+              </View>
+              <View style={styles.sectionTitleContainer}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  Assigned Roles
+                </Text>
+                <Text style={[styles.sectionSubtitle, { color: colors.placeholder }]}>
+                  {roles.length} {roles.length === 1 ? 'role' : 'roles'} currently assigned
+                </Text>
+              </View>
+            </View>
 
             {roles.length > 0 ? (
               <View style={styles.rolesTable}>
-                {roles.map((role) => (
+                {roles.map((role, index) => (
                   <View
                     key={role.assignmentId}
-                    style={[styles.roleRow, { borderBottomColor: colors.border }]}
+                    style={[
+                      styles.roleRow,
+                      { borderBottomColor: colors.border },
+                      index === roles.length - 1 && { borderBottomWidth: 0 },
+                    ]}
                   >
                     <View style={styles.roleInfo}>
-                      <Text style={[styles.roleType, { color: colors.text }]}>
-                        {role.roleType}
-                      </Text>
+                      <View style={styles.roleBadge}>
+                        <Text style={[styles.roleType, { color: colors.primary }]}>
+                          {role.roleType}
+                        </Text>
+                      </View>
                       <Text style={[styles.memberName, { color: colors.text }]}>
                         {role.memberName}
                       </Text>
                       {role.organizationName && (
                         <Text style={[styles.orgName, { color: colors.placeholder }]}>
-                          {role.organizationName}
+                          🏢 {role.organizationName}
                         </Text>
                       )}
                     </View>
                     <TouchableOpacity
                       style={[styles.replaceBtn, { backgroundColor: colors.primary }]}
                       onPress={() => handleInitiateReplacement(role)}
+                      activeOpacity={0.7}
                     >
-                      <Text style={styles.replaceBtnText}>Replace</Text>
+                      <Text style={styles.replaceBtnText}>🔄 Replace</Text>
                     </TouchableOpacity>
                   </View>
                 ))}
               </View>
             ) : (
-              <Text style={[styles.noRolesText, { color: colors.placeholder }]}>
-                No roles assigned yet. Use the form below to assign roles.
-              </Text>
+              <View style={styles.emptyRolesContainer}>
+                <Text style={styles.emptyRolesIcon}>💼</Text>
+                <Text style={[styles.noRolesText, { color: colors.text }]}>
+                  No roles assigned yet
+                </Text>
+                <Text style={[styles.noRolesSubtext, { color: colors.placeholder }]}>
+                  Use the form below to assign roles to members
+                </Text>
+              </View>
             )}
           </View>
 
@@ -374,16 +418,29 @@ export default function EditRegionScreen() {
               {
                 backgroundColor: replacingRole ? '#f8f9ff' : colors.card,
                 borderColor: replacingRole ? colors.primary : colors.border,
+                borderWidth: replacingRole ? 2 : 1,
               },
             ]}
           >
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                {replacingRole ? `Replace Role: ${replacingRole.roleType}` : 'Assign New Role'}
-              </Text>
+              <View style={styles.sectionIcon}>
+                <Text style={styles.iconText}>{replacingRole ? '🔄' : '➕'}</Text>
+              </View>
+              <View style={[styles.sectionTitleContainer, { flex: 1 }]}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  {replacingRole ? `Replace Role: ${replacingRole.roleType}` : 'Assign New Role'}
+                </Text>
+                <Text style={[styles.sectionSubtitle, { color: colors.placeholder }]}>
+                  {replacingRole ? 'Select a new member for this role' : 'Add a member to a leadership role'}
+                </Text>
+              </View>
               {replacingRole && (
-                <TouchableOpacity onPress={() => setReplacingRole(null)}>
-                  <Text style={[styles.cancelText, { color: colors.primary }]}>Cancel</Text>
+                <TouchableOpacity 
+                  style={[styles.cancelButton, { backgroundColor: colors.surface }]}
+                  onPress={() => setReplacingRole(null)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.cancelText, { color: colors.primary }]}>✕</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -583,15 +640,33 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+    gap: 12,
+  },
+  sectionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.05)',
     alignItems: 'center',
-    marginBottom: 16,
+    justifyContent: 'center',
+  },
+  iconText: {
+    fontSize: 22,
+  },
+  sectionTitleContainer: {
+    flex: 1,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    marginBottom: 16,
+    marginBottom: 4,
     letterSpacing: 0.3,
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   fieldGroup: {
     marginBottom: 20,
@@ -606,18 +681,39 @@ const styles = StyleSheet.create({
     color: '#F44336',
   },
   input: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
     fontWeight: '500',
   },
+  helperText: {
+    fontSize: 12,
+    marginTop: 6,
+    fontWeight: '400',
+    lineHeight: 16,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    gap: 6,
+  },
+  errorIcon: {
+    fontSize: 14,
+  },
   errorText: {
     fontSize: 12,
     marginTop: 6,
     fontWeight: '500',
     color: '#F44336',
+    flex: 1,
+  },
+  loadingBtnContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   primaryBtn: {
     paddingVertical: 14,
@@ -646,11 +742,18 @@ const styles = StyleSheet.create({
   },
   roleInfo: {
     flex: 1,
+    gap: 6,
+  },
+  roleBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   roleType: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
-    marginBottom: 4,
   },
   memberName: {
     fontSize: 15,
@@ -670,10 +773,31 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 13,
   },
+  emptyRolesContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 8,
+  },
+  emptyRolesIcon: {
+    fontSize: 48,
+    marginBottom: 8,
+  },
   noRolesText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  noRolesSubtext: {
+    fontSize: 14,
     textAlign: 'center',
-    fontSize: 15,
-    marginVertical: 20,
+    maxWidth: '80%',
+    lineHeight: 20,
+  },
+  cancelButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cancelText: {
     fontSize: 14,

@@ -1,14 +1,16 @@
-import { NavigationHeader } from '@/components/NavigationHeader';
-import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { getStates, deleteState, State } from '@/services/stateService';
-import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import { 
+  getStates, 
+  deleteState, 
+  State 
+} from '@/services/stateService';
+import { useRouter, useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
-  Alert,
+  ActivityIndicator,
   FlatList,
   Modal,
   RefreshControl,
@@ -18,17 +20,19 @@ import {
   View,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function StatesListScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const colors = Colors[colorScheme];
   const [states, setStates] = useState<State[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [stateToDelete, setStateToDelete] = useState<{ id: number; name: string } | null>(null);
+  const isInitialMount = useRef(true);
 
   const loadStates = useCallback(async () => {
     setLoading(true);
@@ -54,13 +58,23 @@ export default function StatesListScreen() {
     loadStates();
   }, [loadStates]);
 
+  // Reload states when navigating back from add/edit screens
+  useFocusEffect(
+    useCallback(() => {
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        return;
+      }
+      loadStates();
+    }, [])
+  );
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadStates();
   }, [loadStates]);
 
   const handleDelete = (id: number, name: string) => {
-    console.log('handleDelete called with id:', id, 'name:', name);
     setStateToDelete({ id, name });
     setDeleteModalVisible(true);
   };
@@ -69,10 +83,7 @@ export default function StatesListScreen() {
     if (!stateToDelete) return;
     
     try {
-      console.log('Delete confirmed - Deleting state with id:', stateToDelete.id);
-      console.log('API endpoint will be: /api/states/' + stateToDelete.id);
       await deleteState(stateToDelete.id);
-      console.log('Delete successful');
       Toast.show({
         type: 'success',
         text1: 'Success',
@@ -83,7 +94,6 @@ export default function StatesListScreen() {
       loadStates();
     } catch (error: any) {
       console.error('Error deleting state:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -91,6 +101,14 @@ export default function StatesListScreen() {
       });
       setDeleteModalVisible(false);
     }
+  };
+
+  const handleAddRecord = () => {
+    router.push('/modules/states/add' as any);
+  };
+
+  const handleEditRecord = (state: State) => {
+    router.push(`/modules/states/${state.id}/edit` as any);
   };
 
   const SkeletonCard = () => (
@@ -127,17 +145,16 @@ export default function StatesListScreen() {
 
   const EmptyState = () => (
     <View style={styles.emptyState}>
-      <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
-        No States Found
-      </Text>
       <Text style={[styles.emptyStateText, { color: colors.placeholder }]}>
-        You don't have any states yet. Add one to get started.
+        No states yet
       </Text>
       <TouchableOpacity
         style={[styles.createButton, { backgroundColor: colors.primary }]}
-        onPress={() => router.push('/modules/states/add' as any)}
+        onPress={handleAddRecord}
+        activeOpacity={0.8}
       >
-        <Text style={styles.createButtonText}>Add State</Text>
+        <Ionicons name="add" size={18} color="white" style={{ marginRight: 6 }} />
+        <Text style={styles.createButtonText}>Create First State</Text>
       </TouchableOpacity>
     </View>
   );
@@ -160,35 +177,54 @@ export default function StatesListScreen() {
   );
 
   function renderItem({ item }: { item: State }) {
+    const formattedDate = item.createdAt 
+      ? new Date(item.createdAt).toISOString().split('T')[0]
+      : 'N/A';
+
     return (
       <View
         style={[
           styles.card,
-          { backgroundColor: colors.card, borderColor: colors.border },
+          { 
+            backgroundColor: colors.card, 
+            borderColor: colors.border,
+          },
         ]}
       >
+        {/* Record Header */}
         <View style={styles.cardHeader}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>
-            #{item.id}
-          </Text>
-          <Text style={[styles.stateName, { color: colors.text }]}>
-            {item.name}
-          </Text>
+          <View style={styles.nameContainer}>
+            <Text style={[styles.stateName, { color: colors.text }]}>
+              {item.name}
+            </Text>
+          </View>
         </View>
 
-        <View style={styles.actionsRow}>
+        {/* Record Meta */}
+        <Text style={[styles.dateText, { color: colors.placeholder }]}>
+          Created: {formattedDate}
+        </Text>
+
+        {/* Action Buttons */}
+        <View style={styles.actionsContainer}>
           <TouchableOpacity
-            style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
-            onPress={() => router.push(`/modules/states/${item.id}/edit` as any)}
+            style={styles.editButton}
+            onPress={() => handleEditRecord(item)}
+            activeOpacity={0.7}
           >
-            <Text style={styles.primaryBtnText}>Edit</Text>
+            <Ionicons name="pencil" size={16} color="#F59E0B" />
+            <Text style={styles.editButtonText}>Edit State</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.ghostDangerBtn, { borderColor: '#F44336' }]}
-            onPress={() => handleDelete(item.id, item.name)}
-          >
-            <Text style={styles.ghostDangerText}>Delete</Text>
-          </TouchableOpacity>
+          <View style={styles.bottomActionsRow}>
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={() => handleDelete(item.id, item.name)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="trash-outline" size={16} color="#EF4444" />
+              <Text style={styles.deleteButtonText}>Delete</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
@@ -234,22 +270,32 @@ export default function StatesListScreen() {
 
   const backgroundColor = useThemeColor({}, 'background');
 
-  const rightComponent = (
-    <TouchableOpacity
-      onPress={() => router.push('/modules/states/add' as any)}
-      style={[styles.addButton, { backgroundColor: colors.primary }]}
-    >
-      <ThemedText style={styles.addButtonText}>Add</ThemedText>
-    </TouchableOpacity>
-  );
-
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>
-      <NavigationHeader
-        title="States"
-        rightComponent={rightComponent}
-        backPath="/(tabs)"
-      />
+      {/* Header */}
+      <View style={[styles.header, { 
+        backgroundColor, 
+        borderBottomColor: colors.border 
+      }]}>
+        <TouchableOpacity
+          onPress={() => router.push('/(tabs)/_modules' as any)}
+          style={styles.backButton}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={20} color={colors.text} />
+        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
+            <Ionicons name="location" size={20} color={colors.primary} />
+          </View>
+          <View style={styles.headerTextContainer}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>States</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.placeholder }]}>
+              {states.length} records
+            </Text>
+          </View>
+        </View>
+      </View>
 
       <View style={[styles.contentContainer, { backgroundColor }]}>
         {content()}
@@ -284,7 +330,7 @@ export default function StatesListScreen() {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: '#F44336' }]}
+                style={[styles.modalButton, { backgroundColor: '#EF4444' }]}
                 onPress={confirmDelete}
                 activeOpacity={0.7}
               >
@@ -296,6 +342,16 @@ export default function StatesListScreen() {
           </View>
         </View>
       </Modal>
+
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        onPress={handleAddRecord}
+        style={[styles.fab, { backgroundColor: colors.primary }]}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="add" size={24} color="white" />
+      </TouchableOpacity>
     </ThemedView>
   );
 }
@@ -304,38 +360,58 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  // Header styles
+  header: {
+    borderBottomWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 8,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  iconContainer: {
+    padding: 8,
+    borderRadius: 12,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
   contentContainer: {
     flex: 1,
     paddingHorizontal: 16,
-  },
-  addButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  addButtonText: {
-    color: 'white',
-    fontWeight: '700',
-    fontSize: 15,
-    letterSpacing: 0.3,
   },
   list: {
     flex: 1,
   },
   listContainer: {
-    paddingBottom: 24,
-    gap: 12,
+    paddingBottom: 100,
+    gap: 16,
+    paddingTop: 16,
   },
+  // Card styles
   card: {
-    marginBottom: 16,
-    padding: 18,
-    borderRadius: 20,
-    borderWidth: 0,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -344,82 +420,90 @@ const styles = StyleSheet.create({
   },
   cardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    gap: 12,
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-    opacity: 0.6,
+  nameContainer: {
+    flex: 1,
   },
   stateName: {
-    fontSize: 17,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-    flex: 1,
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+    lineHeight: 22,
   },
-  actionsRow: {
+  dateText: {
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  // Action buttons
+  actionsContainer: {
+    flexDirection: 'column',
+    gap: 8,
+  },
+  editButton: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 14,
-  },
-  primaryBtn: {
-    flex: 1,
-    paddingVertical: 13,
-    borderRadius: 14,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 8,
+    gap: 6,
   },
-  primaryBtnText: {
-    color: 'white',
-    fontWeight: '700',
+  editButtonText: {
+    color: '#F59E0B',
     fontSize: 14,
+    fontWeight: '600',
   },
-  ghostDangerBtn: {
+  bottomActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  deleteButton: {
     flex: 1,
-    paddingVertical: 13,
-    borderRadius: 14,
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 0,
-    backgroundColor: 'rgba(244, 67, 54, 0.1)',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 8,
+    gap: 6,
   },
-  ghostDangerText: {
-    color: '#F44336',
-    fontWeight: '700',
+  deleteButtonText: {
+    color: '#EF4444',
     fontSize: 14,
+    fontWeight: '600',
   },
+  // Empty state
   emptyState: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-    gap: 10,
+    paddingVertical: 64,
   },
   emptyStateTitle: {
     fontSize: 20,
     fontWeight: '800',
     textAlign: 'center',
     letterSpacing: 0.3,
+    marginBottom: 8,
   },
   emptyStateText: {
-    fontSize: 15,
+    fontSize: 14,
     textAlign: 'center',
-    marginBottom: 8,
-    opacity: 0.7,
-    lineHeight: 22,
+    marginBottom: 24,
   },
   createButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 16,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 6,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -429,7 +513,7 @@ const styles = StyleSheet.create({
   createButtonText: {
     color: 'white',
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: 16,
   },
   // Skeleton styles
   skelRow: {
@@ -452,7 +536,7 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 10,
   },
-  // Modal styles
+  // Delete Modal styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -500,5 +584,21 @@ const styles = StyleSheet.create({
   modalButtonText: {
     fontWeight: '700',
     fontSize: 15,
+  },
+  // Floating Action Button
+  fab: {
+    position: 'absolute',
+    bottom: 96,
+    right: 16,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
 });

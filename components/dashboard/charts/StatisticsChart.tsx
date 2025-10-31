@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, Dimensions, Text } from 'react-native';
+import { View, StyleSheet, Dimensions } from 'react-native';
+import { ThemedText } from '@/components/ThemedText';
 import {
   LineChart,
   BarChart,
@@ -114,7 +115,7 @@ export function StatisticsChart({ type, data, title, height = 220 }: StatisticsC
 
   return (
     <View style={[styles.container, { backgroundColor: colors.card }]}>
-      <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+      <ThemedText style={[styles.title, { color: colors.text }]}>{title}</ThemedText>
       {renderChart()}
     </View>
   );

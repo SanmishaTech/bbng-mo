@@ -2,6 +2,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Colors } from "@/constants/Colors";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { PerformanceProvider } from "@/contexts/PerformanceContext";
+import { UserRoleProvider } from "@/contexts/UserRoleContext";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import {
   DarkTheme,
@@ -23,7 +24,7 @@ function RootLayoutNav() {
   const segments = useSegments();
   const router = useRouter();
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
+  const colors = Colors[colorScheme];
   const [hasInitialized, setHasInitialized] = React.useState(false);
 
   useEffect(() => {
@@ -100,14 +101,16 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <PerformanceProvider>
-          <ThemeProvider
-            value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-          >
-            <RootLayoutNav />
-            <StatusBar style="auto" />
-          </ThemeProvider>
-        </PerformanceProvider>
+        <UserRoleProvider>
+          <PerformanceProvider>
+            <ThemeProvider
+              value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+            >
+              <RootLayoutNav />
+              <StatusBar style="auto" />
+            </ThemeProvider>
+          </PerformanceProvider>
+        </UserRoleProvider>
       </AuthProvider>
     </ErrorBoundary>
   );
