@@ -11,23 +11,79 @@ import { LinearGradient } from "expo-linear-gradient"
 import { useRouter } from "expo-router"
 import { useEffect, useRef, useState } from "react"
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Dimensions,
-  FlatList,
-  Linking,
-  Platform,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Dimensions,
+    FlatList,
+    Linking,
+    Platform,
+    Pressable,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import Svg, { Circle } from "react-native-svg"
 
 const { width } = Dimensions.get("window")
+const CARD_WIDTH = (width - 56) / 3
+
+const CircularProgress = ({ percentage, size = 120, strokeWidth = 8, color = "#8B5CF6" }: any) => {
+  const animatedValue = useRef(new Animated.Value(0)).current
+  const radius = (size - strokeWidth) / 2
+  const circumference = radius * 2 * Math.PI
+  const [progress, setProgress] = useState(0)
+
+  useEffect(() => {
+    animatedValue.addListener((v) => {
+      setProgress(v.value)
+    })
+
+    Animated.timing(animatedValue, {
+      toValue: percentage,
+      duration: 1500,
+      useNativeDriver: false, // Changed to false for web compatibility
+    }).start()
+
+    return () => animatedValue.removeAllListeners()
+  }, [percentage])
+
+  const strokeDashoffset = circumference - (circumference * progress) / 100
+
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size} style={{ transform: [{ rotate: "-90deg" }] }}>
+        {/* Background Circle */}
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="rgba(255,255,255,0.1)"
+          strokeWidth={strokeWidth}
+          fill="none"
+        />
+        {/* Progress Circle */}
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={color}
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${circumference} ${circumference}`}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          fill="none"
+        />
+      </Svg>
+      <View style={styles.progressTextContainer}>
+        <Text style={styles.progressPercentage}>{Math.round(percentage)}%</Text>
+      </View>
+    </View>
+  )
+}
 
 export default function Dashboard() {
   const { user, signOut } = useAuth()
@@ -158,28 +214,36 @@ export default function Dashboard() {
     })
   }
 
+  // Calculate percentages for circular progress
+  const totalTargetBusiness = 500000 // Example target
+  const businessPercentage = Math.min((businessTotal / totalTargetBusiness) * 100, 100)
+
   const categoryData = [
     {
       id: "references",
       title: "References",
       value: referencesCount,
+      target: 50,
       color: "#8B5CF6",
       icon: "person.2.fill",
     },
     {
-      id: "meetings",
-      title: "One-to-One",
-      value: oneToOneCount,
-      color: "#10B981",
-      icon: "calendar.badge.plus",
-    },
-    ...(hasChapterAccess ? [{
-      id: "visitors",
-      title: "Visitors",
-      value: totalVisitorsCount,
+      id: "business",
+      title: "Business",
+      value: businessTotal,
+      target: totalTargetBusiness,
       color: "#06B6D4",
-      icon: "person.3.fill",
-    }] : []),
+      icon: "dollarsign.circle.fill",
+      isAmount: true,
+    },
+    {
+      id: "meetings",
+      title: "Meetings",
+      value: oneToOneCount,
+      target: 20,
+      color: "#10B981",
+      icon: "person.2.fill",
+    },
   ]
 
   const quickActions = [
@@ -270,10 +334,13 @@ export default function Dashboard() {
             </Pressable>
           </View>
 
-          {/* Main Metric */}
+          {/* Main Metric with Circular Progress */}
           <View style={styles.mainMetricContainer}>
             <Text style={styles.mainMetricLabel}>Total Business</Text>
-            <Text style={styles.mainMetricValue}>₹{businessTotal.toLocaleString()}</Text>
+            <View style={styles.mainMetricRow}>
+              <Text style={styles.mainMetricValue}>₹{businessTotal.toLocaleString()}</Text>
+              <CircularProgress percentage={businessPercentage} size={100} strokeWidth={8} color="#8B5CF6" />
+            </View>
           </View>
         </LinearGradient>
 
@@ -485,6 +552,7 @@ export default function Dashboard() {
 // Category Card Component
 const CategoryCard = ({ category, index }: any) => {
   const [scaleAnim] = useState(new Animated.Value(0.8))
+  const percentage = Math.min((category.value / category.target) * 100, 100)
 
   useEffect(() => {
     Animated.spring(scaleAnim, {
@@ -499,15 +567,16 @@ const CategoryCard = ({ category, index }: any) => {
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
       <LinearGradient colors={[category.color, category.color + "CC"]} style={styles.categoryCard}>
-        <View style={styles.categoryIconContainer}>
-          <IconSymbol name={category.icon} size={28} color="#FFFFFF" />
+        <View style={styles.categoryHeader}>
+          <View style={styles.categoryIconContainer}>
+            <IconSymbol name={category.icon} size={20} color="#FFFFFF" />
+          </View>
+          <Text style={styles.categoryPercentage}>{Math.round(percentage)}%</Text>
         </View>
-        <View>
-          <Text style={styles.categoryTitle}>{category.title}</Text>
-          <Text style={styles.categoryValue}>
-            {category.isAmount ? `₹${category.value.toLocaleString()}` : category.value}
-          </Text>
-        </View>
+        <Text style={styles.categoryTitle}>{category.title}</Text>
+        <Text style={styles.categoryValue}>
+          {category.isAmount ? `₹${category.value.toLocaleString()}` : category.value}
+        </Text>
       </LinearGradient>
     </Animated.View>
   )
@@ -923,60 +992,83 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontWeight: "500",
   },
+  mainMetricRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   mainMetricValue: {
     fontSize: 36,
     fontWeight: "800",
     color: "#FFFFFF",
     letterSpacing: -1,
-    marginTop: 4,
+  },
+  progressTextContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  progressPercentage: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
   content: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 8,
+    padding: 20,
   },
   categoryGrid: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
-    marginBottom: 32,
-    gap: 10,
+    marginBottom: 24,
+    gap: 12,
   },
   categoryCard: {
-    flex: 1,
-    padding: 20,
+    width: CARD_WIDTH,
+    padding: 16,
     borderRadius: 20,
     minHeight: 140,
-    justifyContent: "space-between",
   },
-  categoryIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    justifyContent: "center",
+  categoryHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 16,
   },
+  categoryIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  categoryPercentage: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
   categoryTitle: {
-    fontSize: 13,
-    color: "rgba(255, 255, 255, 0.85)",
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.8)",
     marginBottom: 8,
     fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
   },
   categoryValue: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: "800",
     color: "#FFFFFF",
-    lineHeight: 32,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 16,
-    marginTop: 16,
+    marginTop: 8,
   },
   sectionTitle: {
     fontSize: 20,
@@ -1026,13 +1118,13 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginBottom: 32,
     gap: 12,
+    marginBottom: 24,
   },
   statCardContainer: {
-    width: (width - 52) / 2, // (screenWidth - (padding * 2) - gap) / 2
-    marginBottom: 0,
+    flex: 1,
+    minWidth: "48%",
+    maxWidth: "48%",
   },
   statCard: {
     backgroundColor: "#1E293B",
@@ -1041,7 +1133,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.05)",
-    height: "100%",
   },
   statIconContainer: {
     width: 40,
@@ -1065,7 +1156,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   activityList: {
-    marginBottom: 32,
+    marginBottom: 24,
   },
   activityItemContainer: {
     flexDirection: "row",
@@ -1073,7 +1164,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#1E293B",
     borderRadius: 16,
     padding: 16,
-    marginBottom: 10,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.05)",
   },
@@ -1103,19 +1194,17 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   twoColumnGrid: {
-    flexDirection: width >= 768 ? "row" : "column", // Side by side on tablets
+    flexDirection: "column",
     gap: 16,
-    marginBottom: 32,
+    marginBottom: 24,
   },
   activityCard: {
     backgroundColor: "#1E293B",
     borderRadius: 20,
     padding: 20,
     minHeight: 280,
-    maxHeight: 320,
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.05)",
-    flex: width >= 768 ? 1 : undefined, // Equal width on tablets
   },
   activityCardHeader: {
     flexDirection: "row",

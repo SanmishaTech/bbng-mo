@@ -5,20 +5,138 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { getMemberAvatar, getMemberCoverPhoto } from '@/utils/avatarUtils';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { StatPill } from './StatPill';
+import React, { useEffect, useState } from 'react';
+import { Animated, Dimensions, Image, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+
+const { width } = Dimensions.get('window');
 
 interface ProfileHeaderProps {
   member: any;
   onBack?: () => void;
 }
 
+// Modern Stat Card Component
+const ModernStatCard = ({ icon, label, value, color, index }: any) => {
+  const [scaleAnim] = useState(new Animated.Value(0.8));
+  const [fadeAnim] = useState(new Animated.Value(0));
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        delay: index * 80,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        delay: index * 80,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View
+      style={[
+        styles.statCard,
+        {
+          opacity: fadeAnim,
+          transform: [{ scale: scaleAnim }],
+        },
+      ]}
+    >
+      <View style={[styles.statIconContainer, { backgroundColor: color + '20' }]}>
+        <ThemedText style={styles.statIcon}>{icon}</ThemedText>
+      </View>
+      <ThemedText style={styles.statValue}>{value}</ThemedText>
+      <ThemedText style={styles.statLabel}>{label}</ThemedText>
+    </Animated.View>
+  );
+};
+
+// Action Button Component
+const ActionButton = ({ icon, label, onPress, primary = false, index }: any) => {
+  const [scaleAnim] = useState(new Animated.Value(0.9));
+
+  useEffect(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      delay: 200 + index * 60,
+      friction: 8,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  return (
+    <Animated.View style={{ flex: 1, transform: [{ scale: scaleAnim }] }}>
+      <Pressable
+        style={({ pressed }) => [
+          primary ? styles.primaryButton : styles.secondaryButton,
+          pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] },
+        ]}
+        onPress={onPress}
+      >
+        {primary ? (
+          <LinearGradient
+            colors={['#8B5CF6', '#7C3AED']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.buttonGradient}
+          >
+            <ThemedText style={styles.buttonIcon}>{icon}</ThemedText>
+            <ThemedText style={styles.primaryButtonText} numberOfLines={1}>
+              {label}
+            </ThemedText>
+          </LinearGradient>
+        ) : (
+          <View style={styles.secondaryButtonContent}>
+            <ThemedText style={styles.buttonIcon}>{icon}</ThemedText>
+            <ThemedText style={styles.secondaryButtonText} numberOfLines={1}>
+              {label}
+            </ThemedText>
+          </View>
+        )}
+      </Pressable>
+    </Animated.View>
+  );
+};
+
 export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ member, onBack }) => {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   const { user } = useAuth();
+
+  const [headerHeight] = useState(new Animated.Value(0));
+  const [contentOpacity] = useState(new Animated.Value(0));
+  const [slideUpAnim] = useState(new Animated.Value(30));
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(headerHeight, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(contentOpacity, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideUpAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const backendUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+  const coverPhotoUrl = getMemberCoverPhoto(member, backendUrl);
+  const avatarUrl = getMemberAvatar(member, backendUrl);
 
   const getInitials = (name: string) => {
     return name
@@ -29,136 +147,195 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ member, onBack }) 
       .slice(0, 2);
   };
 
-  const backendUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
-  const coverPhotoUrl = getMemberCoverPhoto(member, backendUrl);
-  const avatarUrl = getMemberAvatar(member, backendUrl);
+  const stats = [
+    {
+      icon: '💰',
+      label: 'Business Given',
+      value: `₹${member.businessGiven?.toLocaleString() || 0}`,
+      color: '#10B981',
+    },
+    {
+      icon: '💸',
+      label: 'Business Received',
+      value: `₹${member.businessReceived?.toLocaleString() || 0}`,
+      color: '#8B5CF6',
+    },
+    {
+      icon: '☕',
+      label: 'One-to-Ones',
+      value: member.oneToOnes || 0,
+      color: '#F59E0B',
+    },
+    {
+      icon: '⭐',
+      label: 'Testimonials',
+      value: member.testimonialsCount || member.testimonials?.length || 0,
+      color: '#06B6D4',
+    },
+  ];
 
   return (
-    <View style={[ { borderColor: colors.border }]}>
-      {/* Cover Photo Background */}
-      <Image
-        source={{ uri: coverPhotoUrl }}
-        style={styles.coverImage}
-        resizeMode="cover"
-      />
-      
-      {/* Multi-layer overlay for maximum text readability on any background */}
-      <View style={styles.darkOverlay} />
-      <LinearGradient
-        colors={['rgba(0, 0, 0, 0.4)', 'rgba(0, 0, 0, 0.6)', 'rgba(0, 0, 0, 0.9)']}
-        locations={[0, 0.3, 1]}
-        style={styles.gradientOverlay}
-      />
-      
-      {/* Content */}
-      <View style={styles.content}>
-        {/* Back Button for Mobile */}
+    <View style={styles.container}>
+      {/* Cover Photo with Gradient Overlay */}
+      <View style={styles.coverContainer}>
+        <Image source={{ uri: coverPhotoUrl }} style={styles.coverImage} resizeMode="cover" />
+        <LinearGradient
+          colors={['rgba(15, 23, 42, 0)', 'rgba(15, 23, 42, 0.8)', 'rgba(15, 23, 42, 0.95)']}
+          locations={[0, 0.6, 1]}
+          style={styles.coverGradient}
+        />
+      </View>
+
+      <Animated.View
+        style={[
+          styles.content,
+          {
+            opacity: contentOpacity,
+            transform: [{ translateY: slideUpAnim }],
+          },
+        ]}
+      >
+        {/* Back Button */}
         {onBack && (
-          <TouchableOpacity onPress={onBack} style={styles.backButton} activeOpacity={0.7}>
-            <ThemedText style={styles.backIcon}>←</ThemedText>
-          </TouchableOpacity>
+          <Pressable
+            style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] }]}
+            onPress={onBack}
+          >
+            <View style={styles.backButtonInner}>
+              <ThemedText style={styles.backIcon}>←</ThemedText>
+            </View>
+          </Pressable>
         )}
-        
-        {/* Profile Info */}
-        <View style={styles.profileRow}>
-          <View style={[styles.avatarRing, { backgroundColor: colors.background }]}>
-            <Image source={{ uri: avatarUrl }} style={styles.avatar} resizeMode="cover" />
+
+        {/* Profile Info Card */}
+        <View style={styles.profileCard}>
+          {/* Avatar with Ring */}
+          <View style={styles.avatarSection}>
+            <View style={styles.avatarRing}>
+              <LinearGradient colors={['#8B5CF6', '#7C3AED', '#6D28D9']} style={styles.avatarGradient}>
+                <View style={styles.avatarInner}>
+                  <Image source={{ uri: avatarUrl }} style={styles.avatar} resizeMode="cover" />
+                </View>
+              </LinearGradient>
+            </View>
+
+            {/* Status Indicator */}
+            <View style={styles.statusDot} />
           </View>
-          
-          <View style={styles.infoContainer}>
+
+          {/* Info Section */}
+          <View style={styles.infoSection}>
+            {/* Name and Handle */}
             <View style={styles.nameRow}>
-              <ThemedText style={[styles.name, { color: '#ffffff' }]} numberOfLines={1}>{member.name}</ThemedText>
-              <View style={[styles.badge, { backgroundColor: 'rgba(255, 255, 255, 0.2)', borderColor: 'rgba(255, 255, 255, 0.3)' }]}>
-                <ThemedText style={styles.badgeText}>{member.handle}</ThemedText>
+              <ThemedText style={styles.name} numberOfLines={1}>
+                {member.name}
+              </ThemedText>
+              {member.handle && (
+                <View style={styles.handleBadge}>
+                  <ThemedText style={styles.handleText}>@{member.handle}</ThemedText>
+                </View>
+              )}
+            </View>
+
+            {/* Title and Location */}
+            <View style={styles.metaRow}>
+              <View style={styles.metaItem}>
+                <ThemedText style={styles.metaIcon}>💼</ThemedText>
+                <ThemedText style={styles.metaText} numberOfLines={1}>
+                  {member.title}
+                </ThemedText>
+              </View>
+              <View style={styles.metaDivider} />
+              <View style={styles.metaItem}>
+                <ThemedText style={styles.metaIcon}>📍</ThemedText>
+                <ThemedText style={styles.metaText} numberOfLines={1}>
+                  {member.location}
+                </ThemedText>
               </View>
             </View>
-            
-            <View style={styles.metaRow}>
-              <ThemedText style={styles.metaIcon}>💼</ThemedText>
-              <ThemedText style={styles.metaText} numberOfLines={1}>
-                {member.title}
-              </ThemedText>
-              <ThemedText style={styles.metaDot}>•</ThemedText>
-              <ThemedText style={styles.metaIcon}>📍</ThemedText>
-              <ThemedText style={styles.metaText} numberOfLines={1}>
-                {member.location}
-              </ThemedText>
-            </View>
-            
-            <ThemedText style={styles.bio} numberOfLines={2}>
-              {member.bio}
-            </ThemedText>
-            
+
+            {/* Bio */}
+            {member.bio && (
+              <View style={styles.bioContainer}>
+                <ThemedText style={styles.bio} numberOfLines={3}>
+                  {member.bio}
+                </ThemedText>
+              </View>
+            )}
+
             {/* Tags */}
-            <View style={styles.tagsRow}>
-              {member.tags.map((tag: string) => (
-                <View key={tag} style={[styles.tag, { borderColor: 'rgba(255, 255, 255, 0.3)', backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
-                  <ThemedText style={styles.tagText}>{tag}</ThemedText>
-                </View>
-              ))}
-            </View>
-            
+            {member.tags && member.tags.length > 0 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.tagsContainer}
+              >
+                {member.tags.map((tag: string, index: number) => (
+                  <View key={`${tag}-${index}`} style={styles.tag}>
+                    <ThemedText style={styles.tagText}>{tag}</ThemedText>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+
             {/* Action Buttons - Only show for non-admin users */}
             {user?.role !== 'admin' && (
               <View style={styles.actionsRow}>
-                <TouchableOpacity 
-                  style={[styles.primaryButton, { backgroundColor: colors.primary }]} 
-                  activeOpacity={0.8}
+                <ActionButton
+                  icon="🤝"
+                  label="Give Reference"
+                  primary={true}
                   onPress={() => router.push('/references' as any)}
-                >
-                  <ThemedText style={styles.buttonIcon}>🤝</ThemedText>
-                  <ThemedText style={styles.primaryButtonText} numberOfLines={1}>Give Reference</ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.secondaryButton, { backgroundColor: 'rgba(255, 255, 255, 0.95)', borderColor: 'rgba(0, 0, 0, 0.15)' }]} 
-                  activeOpacity={0.8}
+                  index={0}
+                />
+                <ActionButton
+                  icon="☕"
+                  label="Schedule 1:1"
+                  primary={false}
                   onPress={() => router.push('/modules/onetoone' as any)}
-                >
-                  <ThemedText style={styles.buttonIcon}>☕</ThemedText>
-                  <ThemedText style={[styles.secondaryButtonText, { color: '#000000' }]} numberOfLines={1}>One-to-One</ThemedText>
-                </TouchableOpacity>
+                  index={1}
+                />
               </View>
             )}
           </View>
         </View>
-        
-        {/* Stats Pills */}
-        <View style={styles.statsContainer}>
-          <StatPill icon="💰" label="Business Given" value={member.businessGiven} />
-          <StatPill icon="💰" label="Business Received" value={member.businessReceived} />
-          <StatPill icon="☕" label="One-to-Ones" value={member.oneToOnes || 0} />
-          <StatPill icon="💬" label="Testimonials" value={member.testimonialsCount || member.testimonials?.length || 0} />
+
+        {/* Stats Grid */}
+        <View style={styles.statsSection}>
+          <ThemedText style={styles.statsTitle}>Performance Overview</ThemedText>
+          <View style={styles.statsGrid}>
+            {stats.map((stat, index) => (
+              <ModernStatCard
+                key={stat.label}
+                icon={stat.icon}
+                label={stat.label}
+                value={stat.value}
+                color={stat.color}
+                index={index}
+              />
+            ))}
+          </View>
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 24,
-    borderWidth: 1,
-    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#0F172A',
+  },
+  coverContainer: {
+    height: 200,
+    width: '100%',
     position: 'relative',
   },
   coverImage: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
     width: '100%',
     height: '100%',
   },
-  darkOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-  },
-  gradientOverlay: {
+  coverGradient: {
     position: 'absolute',
     top: 0,
     left: 0,
@@ -166,181 +343,302 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   content: {
-    padding: 16,
+    marginTop: -60,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
     position: 'relative',
-    zIndex: 1,
+    zIndex: 10,
   },
   backButton: {
+    position: 'absolute',
+    top: -140,
+    left: 20,
+    zIndex: 20,
+  },
+  backButtonInner: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    alignItems: 'center',
+    backgroundColor: 'rgba(30, 41, 59, 0.9)',
     justifyContent: 'center',
-    marginBottom: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   backIcon: {
     fontSize: 24,
+    color: '#FFFFFF',
   },
-  profileRow: {
-    flexDirection: 'row',
-    gap: 12,
+  profileCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: 20,
+    position: 'relative',
   },
   avatarRing: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    padding: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    padding: 3,
+  },
+  avatarGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 50,
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 46,
+    overflow: 'hidden',
+    backgroundColor: '#1E293B',
   },
   avatar: {
     width: '100%',
     height: '100%',
-    borderRadius: 38,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  avatarText: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#fff',
+  statusDot: {
+    position: 'absolute',
+    bottom: 8,
+    right: '50%',
+    marginRight: -40,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#10B981',
+    borderWidth: 3,
+    borderColor: '#1E293B',
   },
-  infoContainer: {
-    flex: 1,
-    minWidth: 0,
+  infoSection: {
+    gap: 12,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
+    gap: 10,
     flexWrap: 'wrap',
   },
   name: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '800',
-    color: '#fff',
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
   },
-  badge: {
-    paddingHorizontal: 10,
+  handleBadge: {
+    backgroundColor: '#8B5CF620',
+    paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
     borderWidth: 1,
+    borderColor: '#8B5CF640',
   },
-  badgeText: {
-    fontSize: 11,
+  handleText: {
+    fontSize: 12,
     fontWeight: '600',
-    color: '#fff',
+    color: '#8B5CF6',
   },
   metaRow: {
     flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
+    gap: 12,
     flexWrap: 'wrap',
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   metaIcon: {
-    fontSize: 12,
+    fontSize: 14,
   },
   metaText: {
-    fontSize: 12,
-    color: '#fff',
-    textShadowColor: 'rgba(0, 0, 0, 0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    fontSize: 13,
+    color: '#94A3B8',
+    fontWeight: '500',
   },
-  metaDot: {
-    fontSize: 12,
-    marginHorizontal: 2,
-    color: '#fff',
-    opacity: 0.8,
+  metaDivider: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#475569',
+  },
+  bioContainer: {
+    marginTop: 4,
   },
   bio: {
-    fontSize: 13,
-    marginTop: 8,
-    lineHeight: 18,
-    color: '#fff',
-    textShadowColor: 'rgba(0, 0, 0, 0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#CBD5E1',
+    textAlign: 'center',
   },
-  tagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 12,
+  tagsContainer: {
+    gap: 8,
+    paddingVertical: 4,
+    justifyContent: 'center',
   },
   tag: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
     borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.3)',
   },
   tagText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#fff',
+    color: '#A78BFA',
+    letterSpacing: 0.3,
   },
   actionsRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 16,
+    gap: 12,
+    marginTop: 8,
   },
   primaryButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#8B5CF6',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  buttonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 20,
-    flex: 1,
-    minHeight: 44,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
   },
   secondaryButton: {
+    borderRadius: 16,
+    backgroundColor: '#334155',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  secondaryButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    flex: 1,
-    minHeight: 44,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
   },
   buttonIcon: {
-    fontSize: 14,
+    fontSize: 16,
   },
   primaryButtonText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#fff',
+    color: '#FFFFFF',
   },
   secondaryButtonText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
+    color: '#E2E8F0',
   },
-  statsContainer: {
+  statsSection: {
+    marginTop: 24,
+  },
+  statsTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 16,
+    letterSpacing: -0.3,
+  },
+  statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginTop: 16,
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    minWidth: '48%',
+    maxWidth: '48%',
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  statIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  statIcon: {
+    fontSize: 24,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 4,
+    letterSpacing: -0.3,
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 });

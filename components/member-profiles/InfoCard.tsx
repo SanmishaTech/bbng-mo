@@ -1,16 +1,24 @@
-import { ThemedText } from '@/components/ThemedText';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
-import React from 'react';
-import { Linking, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { IconSymbol } from '@/components/ui/IconSymbol';
+import React, { useEffect, useState } from 'react';
+import { Animated, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 interface InfoCardProps {
   member: any;
+  index?: number;
 }
 
-export const InfoCard: React.FC<InfoCardProps> = ({ member }) => {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+export const InfoCard: React.FC<InfoCardProps> = ({ member, index = 0 }) => {
+  const [scaleAnim] = useState(new Animated.Value(0.9));
+
+  useEffect(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      delay: index * 60,
+      friction: 8,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   const handlePress = (type: 'email' | 'phone' | 'website', value: string) => {
     if (type === 'email') {
@@ -22,42 +30,67 @@ export const InfoCard: React.FC<InfoCardProps> = ({ member }) => {
     }
   };
 
+  const items = [
+    { type: 'email' as const, icon: 'envelope.fill' as const, label: 'Email', value: member.email, color: '#8B5CF6' },
+    { type: 'phone' as const, icon: 'phone.fill' as const, label: 'Phone', value: member.phone, color: '#10B981' },
+    { type: 'website' as const, icon: 'link.circle.fill' as const, label: 'Website', value: member.website?.replace('https://', '').replace('http://', ''), color: '#06B6D4' },
+  ];
+
   return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <ThemedText style={styles.title}>Contact & Links</ThemedText>
-      
-      <View style={styles.content}>
-        <TouchableOpacity style={styles.row} onPress={() => handlePress('email', member.email)} activeOpacity={0.7}>
-          <ThemedText style={styles.icon}>📧</ThemedText>
-          <ThemedText style={[styles.text, { color: colors.text }]} numberOfLines={1}>{member.email}</ThemedText>
-        </TouchableOpacity>
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <View style={styles.card}>
+        <Text style={styles.title}>Contact Information</Text>
         
-        <TouchableOpacity style={styles.row} onPress={() => handlePress('phone', member.phone)} activeOpacity={0.7}>
-          <ThemedText style={styles.icon}>📱</ThemedText>
-          <ThemedText style={[styles.text, { color: colors.text }]}>{member.phone}</ThemedText>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.row} onPress={() => handlePress('website', member.website)} activeOpacity={0.7}>
-          <ThemedText style={styles.icon}>🌐</ThemedText>
-          <ThemedText style={[styles.text, { color: colors.primary }]} numberOfLines={1}>
-            {member.website?.replace('https://', '').replace('http://', '')}
-          </ThemedText>
-        </TouchableOpacity>
+        <View style={styles.content}>
+          {items.map((item, idx) => (
+            <Pressable
+              key={idx}
+              style={({ pressed }) => [
+                styles.row,
+                pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] }
+              ]}
+              onPress={() => handlePress(item.type, item.value)}
+            >
+              <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
+                <IconSymbol name={item.icon} size={20} color={item.color} />
+              </View>
+              <View style={styles.itemContent}>
+                <Text style={styles.itemLabel}>{item.label}</Text>
+                <Text style={styles.itemValue} numberOfLines={1}>{item.value}</Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
       </View>
-    </View>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 24,
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 20,
     borderWidth: 1,
-    padding: 16,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   title: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
-    marginBottom: 12,
+    color: '#FFFFFF',
+    marginBottom: 16,
+    letterSpacing: -0.3,
   },
   content: {
     gap: 12,
@@ -65,13 +98,31 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
+    paddingVertical: 8,
   },
-  icon: {
-    fontSize: 16,
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  text: {
-    fontSize: 13,
+  itemContent: {
     flex: 1,
+    gap: 2,
+  },
+  itemLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  itemValue: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#FFFFFF',
+    lineHeight: 20,
   },
 });

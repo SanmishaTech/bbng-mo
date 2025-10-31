@@ -1,79 +1,162 @@
-import { ThemedText } from '@/components/ThemedText';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
 import { getTestimonialAvatar } from '@/utils/avatarUtils';
-import React from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Animated, Image, Platform, StyleSheet, Text, View } from 'react-native';
 
 interface TestimonialsCardProps {
   testimonials: any[];
   member?: any;
+  index?: number;
 }
 
-export const TestimonialsCard: React.FC<TestimonialsCardProps> = ({ testimonials, member }) => {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+export const TestimonialsCard: React.FC<TestimonialsCardProps> = ({ testimonials, member, index = 0 }) => {
+  const [scaleAnim] = useState(new Animated.Value(0.9));
   const backendUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
+  useEffect(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      delay: index * 60,
+      friction: 8,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
   return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <ThemedText style={styles.title}>Testimonials</ThemedText>
-      
-      <View style={styles.content}>
-        {testimonials.map((item, index) => {
-          // Map testimonial data to user format for avatar utility
-          const testimonialUser = {
-            id: item.id || index,
-            name: item.by,
-            avatar: item.avatar,
-            profilePicture: item.avatar,
-          };
-          
-          return (
-            <View key={index} style={styles.testimonialRow}>
-              <View style={[styles.avatarContainer, { backgroundColor: colors.background }]}>
-                <Image 
-                  source={{ uri: getTestimonialAvatar(testimonialUser, backendUrl) }} 
-                  style={styles.avatar} 
-                  resizeMode="cover"
-                />
-              </View>
-            
-            <View style={styles.testimonialContent}>
-              <ThemedText style={styles.authorName}>{item.by}</ThemedText>
-              
-              <ThemedText style={[styles.testimonialText, { color: colors.text }]}>
-                {item.text}
-              </ThemedText>
-              
-              <ThemedText style={[styles.testimonialDate, { color: colors.tabIconDefault }]}>
-                {item.date}
-              </ThemedText>
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <View style={styles.card}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Testimonials</Text>
+          {testimonials.length > 0 && (
+            <View style={styles.countBadge}>
+              <Text style={styles.countText}>{testimonials.length}</Text>
             </View>
-          </View>
-          );
-        })}
+          )}
+        </View>
         
-        {testimonials.length === 0 && (
-          <ThemedText style={[styles.emptyText, { color: colors.tabIconDefault }]}>
-            No testimonials yet
-          </ThemedText>
-        )}
+        <View style={styles.content}>
+          {testimonials.map((item, idx) => {
+            const testimonialUser = {
+              id: item.id || idx,
+              name: item.by,
+              avatar: item.avatar,
+              profilePicture: item.avatar,
+            };
+            
+            return (
+              <TestimonialItem
+                key={idx}
+                item={item}
+                avatarUrl={getTestimonialAvatar(testimonialUser, backendUrl)}
+                index={idx}
+              />
+            );
+          })}
+          
+          {testimonials.length === 0 && (
+            <Text style={styles.emptyText}>No testimonials yet</Text>
+          )}
+        </View>
       </View>
-    </View>
+    </Animated.View>
+  );
+};
+
+const TestimonialItem = ({ item, avatarUrl, index }: any) => {
+  const [slideAnim] = useState(new Animated.Value(20));
+  const [fadeAnim] = useState(new Animated.Value(0));
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 300,
+        delay: index * 50,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        delay: index * 50,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View
+      style={[
+        styles.testimonialRow,
+        {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        },
+      ]}
+    >
+      <View style={styles.avatarContainer}>
+        <Image 
+          source={{ uri: avatarUrl }} 
+          style={styles.avatar} 
+          resizeMode="cover"
+        />
+      </View>
+    
+      <View style={styles.testimonialContent}>
+        <Text style={styles.authorName}>{item.by}</Text>
+        
+        <Text style={styles.testimonialText}>
+          {item.text}
+        </Text>
+        
+        <Text style={styles.testimonialDate}>
+          {item.date}
+        </Text>
+      </View>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 24,
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 20,
     borderWidth: 1,
-    padding: 16,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   title: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
-    marginBottom: 12,
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+  },
+  countBadge: {
+    backgroundColor: '#8B5CF620',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  countText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8B5CF6',
   },
   content: {
     gap: 16,
@@ -81,18 +164,20 @@ const styles = StyleSheet.create({
   testimonialRow: {
     flexDirection: 'row',
     gap: 12,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   avatarContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     overflow: 'hidden',
+    backgroundColor: '#334155',
   },
   avatar: {
     width: '100%',
     height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   testimonialContent: {
     flex: 1,
@@ -101,17 +186,25 @@ const styles = StyleSheet.create({
   authorName: {
     fontSize: 14,
     fontWeight: '600',
+    color: '#FFFFFF',
   },
   testimonialText: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#CBD5E1',
+    lineHeight: 20,
   },
   testimonialDate: {
     fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   emptyText: {
     fontSize: 13,
+    color: '#64748B',
     textAlign: 'center',
-    padding: 16,
+    paddingVertical: 32,
   },
 });

@@ -1,20 +1,86 @@
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import { Colors } from '@/constants/Colors';
-import { useAuth } from '@/contexts/AuthContext';
-import { useUserRole } from '@/contexts/UserRoleContext';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   Dimensions,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
-  View
+  View,
+  type ScaledSize,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { IconSymbol } from '@/components/ui/IconSymbol';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/contexts/UserRoleContext';
+
+const COLORS = {
+  bg_primary: '#0F172A',
+  bg_secondary: '#1E293B',
+  bg_tertiary: '#334155',
+  primary: '#8B5CF6',
+  success: '#10B981',
+  warning: '#F59E0B',
+  info: '#06B6D4',
+  error: '#EF4444',
+  text_primary: '#FFFFFF',
+  text_secondary: '#CBD5E1',
+  text_tertiary: '#94A3B8',
+  text_quaternary: '#64748B',
+  border: 'rgba(255, 255, 255, 0.05)',
+  border_emphasis: 'rgba(255, 255, 255, 0.1)',
+  gradient_header: ['#1F2937', '#111827'] as const,
+};
+
+const TYPOGRAPHY = {
+  h1: { size: 28, weight: '800' as const, lineHeight: 34, letterSpacing: -0.5 },
+  h4: { size: 18, weight: '700' as const, lineHeight: 24, letterSpacing: -0.3 },
+  body: { size: 14, weight: '400' as const, lineHeight: 20 },
+  bodySemibold: { size: 14, weight: '600' as const, lineHeight: 20 },
+  small: { size: 12, weight: '500' as const, lineHeight: 16 },
+  label: { size: 11, weight: '600' as const, lineHeight: 14, letterSpacing: 0.5 },
+};
+
+const SPACING = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  '2xl': 24,
+  '3xl': 32,
+  '4xl': 40,
+  '5xl': 48,
+};
+
+const RADIUS = {
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  '2xl': 24,
+  full: 9999,
+};
+
+const SHADOW = {
+  medium: {
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+};
 
 interface Module {
   id: string;
@@ -27,6 +93,8 @@ interface Module {
   color: string; // Color for icon background and text
 }
 
+const CARD_OFFSET = 56;
+
 const modules: Module[] = [
   {
     id: 'states',
@@ -35,7 +103,7 @@ const modules: Module[] = [
     icon: 'map.fill',
     category: 'Location Management',
     description: 'Manage states and regions',
-    color: '#3B82F6', // Blue
+    color: COLORS.info,
   },
   {
     id: 'regions',
@@ -44,7 +112,7 @@ const modules: Module[] = [
     icon: 'globe',
     category: 'Location Management',
     description: 'Manage geographical regions',
-    color: '#06B6D4', // Cyan
+    color: COLORS.primary,
   },
   {
     id: 'locations',
@@ -53,7 +121,7 @@ const modules: Module[] = [
     icon: 'mappin.and.ellipse',
     category: 'Location Management',
     description: 'Manage location assignments',
-    color: '#14B8A6', // Teal
+    color: COLORS.success,
   },
   {
     id: 'categories',
@@ -62,7 +130,7 @@ const modules: Module[] = [
     icon: 'tag.fill',
     category: 'Business Data',
     description: 'Manage business categories',
-    color: '#EF4444', // Red
+    color: COLORS.error,
   },
   {
     id: 'subcategories',
@@ -71,7 +139,7 @@ const modules: Module[] = [
     icon: 'tag',
     category: 'Business Data',
     description: 'Manage business sub-categories',
-    color: '#F59E0B', // Amber
+    color: COLORS.warning,
   },
   {
     id: 'packages',
@@ -80,7 +148,7 @@ const modules: Module[] = [
     icon: 'shippingbox.fill',
     category: 'Membership',
     description: 'Manage membership packages and pricing',
-    color: '#8B5CF6', // Purple
+    color: COLORS.primary,
   },
   {
     id: 'members',
@@ -89,7 +157,7 @@ const modules: Module[] = [
     icon: 'person.2.fill',
     category: 'Membership',
     description: 'Manage member information and accounts',
-    color: '#10B981', // Green
+    color: COLORS.success,
   },
   {
     id: 'chapters',
@@ -98,7 +166,7 @@ const modules: Module[] = [
     icon: 'book.fill',
     category: 'Organization',
     description: 'Manage chapters with zones and locations',
-    color: '#6366F1', // Indigo
+    color: COLORS.info,
   },
   {
     id: 'powerteams',
@@ -107,7 +175,7 @@ const modules: Module[] = [
     icon: 'person.3.fill',
     category: 'Organization',
     description: 'Manage power teams and their categories',
-    color: '#EC4899', // Pink
+    color: COLORS.primary,
   },
   {
     id: 'trainings',
@@ -116,7 +184,7 @@ const modules: Module[] = [
     icon: 'book.closed.fill',
     category: 'Education',
     description: 'Manage training schedules and sessions',
-    color: '#A855F7', // Violet
+    color: COLORS.primary,
   },
   {
     id: 'sitesettings',
@@ -125,7 +193,7 @@ const modules: Module[] = [
     icon: 'gearshape.fill',
     category: 'Configuration',
     description: 'Configure application settings and preferences',
-    color: '#F97316', // Orange
+    color: COLORS.warning,
   },
   {
     id: 'messages',
@@ -134,7 +202,7 @@ const modules: Module[] = [
     icon: 'envelope.fill',
     category: 'Communication',
     description: 'Manage messages and announcements',
-    color: '#F43F5E', // Rose
+    color: COLORS.error,
   },
   {
     id: 'visitors',
@@ -143,7 +211,7 @@ const modules: Module[] = [
     icon: 'person.3',
     category: 'Events',
     description: 'Manage chapter visitors',
-    color: '#0EA5E9', // Sky Blue
+    color: COLORS.info,
   },
   {
     id: 'meetings',
@@ -152,7 +220,7 @@ const modules: Module[] = [
     icon: 'calendar',
     category: 'Events',
     description: 'Manage chapter meetings',
-    color: '#FF9500', // Orange
+    color: COLORS.warning,
   },
   {
     id: 'onetoone',
@@ -161,7 +229,7 @@ const modules: Module[] = [
     icon: 'person.2',
     category: 'Networking',
     description: 'Manage one-to-one meeting requests',
-    color: '#FACC15', // Yellow
+    color: COLORS.primary,
   },
   {
     id: 'references',
@@ -170,7 +238,7 @@ const modules: Module[] = [
     icon: 'person.badge.plus',
     category: 'Business',
     description: 'Give and manage references',
-    color: '#10B981', // Green
+    color: COLORS.success,
   },
   {
     id: 'donedeals',
@@ -179,7 +247,7 @@ const modules: Module[] = [
     icon: 'checkmark.circle.fill',
     category: 'Business',
     description: 'Mark and track completed deals',
-    color: '#22C55E', // Success Green
+    color: COLORS.success,
   },
   {
     id: 'requirements',
@@ -188,18 +256,53 @@ const modules: Module[] = [
     icon: 'list.bullet.clipboard',
     category: 'Business',
     description: 'View member requirements',
-    color: '#8B5CF6', // Purple
+    color: COLORS.primary,
   },
 ];
 
 export default function ModulesScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
   const { hasChapterAccess } = useUserRole();
   const insets = useSafeAreaInsets();
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [cardWidth, setCardWidth] = useState<number>(() => {
+    const { width } = Dimensions.get('window');
+    return Math.max((width - CARD_OFFSET) / 3, 112);
+  });
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const translateAnim = useRef(new Animated.Value(12)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [fadeAnim, translateAnim]);
+
+  useEffect(() => {
+    const handleDimensionsChange = ({ window }: { window: ScaledSize }) => {
+      setCardWidth(Math.max((window.width - CARD_OFFSET) / 3, 112));
+    };
+
+    const subscription = Dimensions.addEventListener('change', handleDimensionsChange);
+
+    return () => {
+      if (typeof subscription?.remove === 'function') {
+        subscription.remove();
+      } else {
+        Dimensions.removeEventListener('change', handleDimensionsChange);
+      }
+    };
+  }, []);
 
   // Define module accessibility based on chapter association
   const commonModules = [
@@ -242,80 +345,129 @@ export default function ModulesScreen() {
     return false;
   });
 
-  // Get unique categories
-  const categories = ['All', ...Array.from(new Set(filteredModules.map(m => m.category)))];
+  const categories = useMemo(
+    () => ['All', ...Array.from(new Set(filteredModules.map(m => m.category)))],
+    [filteredModules]
+  );
 
-  // Filter by selected category
-  const displayedModules = selectedCategory === 'All' 
-    ? filteredModules 
-    : filteredModules.filter(m => m.category === selectedCategory);
+  const displayedModules = useMemo(
+    () =>
+      selectedCategory === 'All'
+        ? filteredModules
+        : filteredModules.filter(m => m.category === selectedCategory),
+    [filteredModules, selectedCategory]
+  );
 
-  // Group modules by category for display
-  const groupedModules = displayedModules.reduce((acc, module) => {
-    if (!acc[module.category]) {
-      acc[module.category] = [];
-    }
-    acc[module.category].push(module);
-    return acc;
-  }, {} as Record<string, Module[]>);
+  const groupedModules = useMemo(() => {
+    return displayedModules.reduce((acc, module) => {
+      if (!acc[module.category]) {
+        acc[module.category] = [];
+      }
+      acc[module.category].push(module);
+      return acc;
+    }, {} as Record<string, Module[]>);
+  }, [displayedModules]);
 
-  function renderModuleCard(item: Module) {
-    const screenWidth = Dimensions.get('window').width;
-    const padding = 16 * 2; // Total horizontal padding from scrollContent
-    const gap = 12; // Gap between cards
-    const cardWidth = (screenWidth - padding - gap * 2) / 3;
-
-    return (
-      <TouchableOpacity 
-        key={item.id}
-        style={[
-          styles.gridCard, 
-          { 
-            backgroundColor: colors.card, 
-            borderColor: colors.border,
-            width: cardWidth,
-          }
-        ]} 
-        onPress={() => router.push(item.route as any)}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.gridIconContainer, { backgroundColor: item.color + '1A' }]}>
-          <IconSymbol name={item.icon as any} size={20} color={item.color} />
-        </View>
-        <Text style={[styles.gridModuleName, { color: colors.text }]} numberOfLines={2}>
-          {item.name}
-        </Text>
-      </TouchableOpacity>
-    );
-  }
-
+  const moduleIndexMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    displayedModules.forEach((module, index) => {
+      map[module.id] = index;
+    });
+    return map;
+  }, [displayedModules]);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { 
-            paddingTop: insets.top || 16,
-            paddingBottom: (Platform.OS === 'ios' ? 100 : 80) + insets.bottom
-          }
+    <View style={styles.container}>
+      <LinearGradient
+        colors={COLORS.gradient_header}
+        style={[
+          styles.header,
+          { paddingTop: insets.top + 60 },
         ]}
-        showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.headerSection}>
-          <Text style={[styles.title, { color: colors.text }]}>Modules</Text>
-          <Text style={[styles.subtitle, { color: colors.placeholder }]}>
-            Manage and access all available modules
-          </Text>
+        <View style={styles.headerContent}>
+          <View style={styles.headerTextGroup}>
+            <Text style={styles.headerTitle}>Modules</Text>
+            <Text style={styles.headerSubtitle}>
+              Manage and access all available modules
+            </Text>
+          </View>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>
+              {displayedModules.length} ACTIVE
+            </Text>
+          </View>
         </View>
+      </LinearGradient>
 
-        {/* Modules Grid */}
-        <View style={styles.gridContainer}>
-          {filteredModules.map(module => renderModuleCard(module))}
-        </View>
-      </ScrollView>
+      <Animated.View
+        style={[
+          styles.contentWrapper,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: translateAnim }],
+          },
+        ]}
+      >
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.contentContainer,
+            { paddingBottom: SPACING['3xl'] + insets.bottom },
+          ]}
+        >
+          <View style={styles.filterSection}>
+            <Text style={styles.sectionLabel}>Filter by category</Text>
+            <View style={styles.filterRow}>
+              {categories.map(category => {
+                const isActive = category === selectedCategory;
+                return (
+                  <Pressable
+                    key={category}
+                    onPress={() => setSelectedCategory(category)}
+                    style={({ pressed }) => [
+                      styles.filterChip,
+                      isActive && styles.filterChipActive,
+                      pressed && styles.filterChipPressed,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        isActive && styles.filterChipTextActive,
+                      ]}
+                    >
+                      {category}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {Object.entries(groupedModules).map(([category, modulesInCategory]) => (
+            <View key={category} style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>{category}</Text>
+                <Text style={styles.sectionMeta}>
+                  {modulesInCategory.length} MODULES
+                </Text>
+              </View>
+              <View style={styles.grid}>
+                {modulesInCategory.map(module => (
+                  <ModuleCard
+                    key={module.id}
+                    item={module}
+                    index={moduleIndexMap[module.id] ?? 0}
+                    width={cardWidth}
+                    onPress={() => router.push(module.route as never)}
+                  />
+                ))}
+              </View>
+            </View>
+          ))}
+        </ScrollView>
+      </Animated.View>
     </View>
   );
 }
@@ -323,56 +475,221 @@ export default function ModulesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.bg_primary,
   },
-  scrollView: {
+  header: {
+    paddingHorizontal: SPACING.xl,
+    paddingBottom: SPACING['3xl'],
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: SPACING.lg,
+  },
+  headerTextGroup: {
     flex: 1,
   },
-  scrollContent: {
-    padding: 16,
+  headerTitle: {
+    fontSize: TYPOGRAPHY.h1.size,
+    fontWeight: TYPOGRAPHY.h1.weight,
+    lineHeight: TYPOGRAPHY.h1.lineHeight,
+    letterSpacing: TYPOGRAPHY.h1.letterSpacing,
+    color: COLORS.text_primary,
   },
-  headerSection: {
-    marginBottom: 24,
+  headerSubtitle: {
+    marginTop: SPACING.sm,
+    fontSize: TYPOGRAPHY.body.size,
+    fontWeight: TYPOGRAPHY.body.weight,
+    lineHeight: TYPOGRAPHY.body.lineHeight,
+    color: COLORS.text_secondary,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 6,
+  badge: {
+    backgroundColor: `${COLORS.primary}20`,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border_emphasis,
   },
-  subtitle: {
-    fontSize: 14,
+  badgeText: {
+    fontSize: TYPOGRAPHY.label.size,
+    fontWeight: TYPOGRAPHY.label.weight,
+    lineHeight: TYPOGRAPHY.label.lineHeight,
+    letterSpacing: TYPOGRAPHY.label.letterSpacing,
+    textTransform: 'uppercase',
+    color: COLORS.primary,
   },
-  gridContainer: {
+  contentWrapper: {
+    flex: 1,
+  },
+  contentContainer: {
+    paddingHorizontal: SPACING.xl,
+    paddingTop: SPACING['2xl'],
+  },
+  filterSection: {
+    marginBottom: SPACING['2xl'],
+    gap: SPACING.md,
+  },
+  sectionLabel: {
+    fontSize: TYPOGRAPHY.small.size,
+    fontWeight: TYPOGRAPHY.small.weight,
+    lineHeight: TYPOGRAPHY.small.lineHeight,
+    textTransform: 'uppercase',
+    letterSpacing: TYPOGRAPHY.label.letterSpacing,
+    color: COLORS.text_quaternary,
+  },
+  filterRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 32,
+    gap: SPACING.md,
+  },
+  filterChip: {
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.bg_secondary,
+  },
+  filterChipActive: {
+    backgroundColor: `${COLORS.primary}20`,
+    borderColor: COLORS.border_emphasis,
+  },
+  filterChipPressed: {
+    opacity: 0.8,
+  },
+  filterChipText: {
+    fontSize: TYPOGRAPHY.small.size,
+    fontWeight: TYPOGRAPHY.small.weight,
+    lineHeight: TYPOGRAPHY.small.lineHeight,
+    color: COLORS.text_secondary,
+  },
+  filterChipTextActive: {
+    color: COLORS.text_primary,
+  },
+  section: {
+    marginBottom: SPACING['2xl'],
+    gap: SPACING.md,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sectionTitle: {
+    fontSize: TYPOGRAPHY.h4.size,
+    fontWeight: TYPOGRAPHY.h4.weight,
+    lineHeight: TYPOGRAPHY.h4.lineHeight,
+    letterSpacing: TYPOGRAPHY.h4.letterSpacing,
+    color: COLORS.text_primary,
+  },
+  sectionMeta: {
+    fontSize: TYPOGRAPHY.small.size,
+    fontWeight: TYPOGRAPHY.small.weight,
+    lineHeight: TYPOGRAPHY.small.lineHeight,
+    color: COLORS.text_tertiary,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.md,
   },
   gridCard: {
-    minHeight: 96,
-    padding: 16,
-    borderRadius: 12,
+    minHeight: 112,
+    padding: SPACING.lg,
+    borderRadius: RADIUS.lg,
     borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.bg_secondary,
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    justifyContent: 'flex-start',
+    gap: SPACING.md,
+    ...SHADOW.medium,
+  },
+  gridCardPressed: {
+    opacity: 0.9,
   },
   gridIconContainer: {
     width: 48,
     height: 48,
-    borderRadius: 12,
+    borderRadius: RADIUS.lg,
     justifyContent: 'center',
     alignItems: 'center',
   },
   gridModuleName: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: TYPOGRAPHY.bodySemibold.size,
+    fontWeight: TYPOGRAPHY.bodySemibold.weight,
+    lineHeight: TYPOGRAPHY.bodySemibold.lineHeight,
+    color: COLORS.text_primary,
+    textAlign: 'center',
+  },
+  gridModuleDescription: {
+    fontSize: TYPOGRAPHY.small.size,
+    fontWeight: TYPOGRAPHY.small.weight,
+    lineHeight: TYPOGRAPHY.small.lineHeight,
+    color: COLORS.text_tertiary,
     textAlign: 'center',
   },
 });
+
+interface ModuleCardProps {
+  item: Module;
+  index: number;
+  width: number;
+  onPress: () => void;
+}
+
+const ModuleCard: React.FC<ModuleCardProps> = ({ item, index, width, onPress }) => {
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 300,
+        delay: index * 60,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 300,
+        delay: index * 60,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [index, opacityAnim, scaleAnim]);
+
+  return (
+    <Animated.View
+      style={{
+        width,
+        opacity: opacityAnim,
+        transform: [{ scale: scaleAnim }],
+      }}
+    >
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.gridCard,
+          pressed && styles.gridCardPressed,
+        ]}
+      >
+        <View style={[styles.gridIconContainer, { backgroundColor: `${item.color}20` }]}>
+          <IconSymbol name={item.icon as any} size={20} color={item.color} />
+        </View>
+        <Text style={styles.gridModuleName} numberOfLines={2}>
+          {item.name}
+        </Text>
+        {item.description ? (
+          <Text style={styles.gridModuleDescription} numberOfLines={2}>
+            {item.description}
+          </Text>
+        ) : null}
+      </Pressable>
+    </Animated.View>
+  );
+};

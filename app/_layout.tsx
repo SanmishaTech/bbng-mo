@@ -3,6 +3,7 @@ import { Colors } from "@/constants/Colors";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { PerformanceProvider } from "@/contexts/PerformanceContext";
 import { UserRoleProvider } from "@/contexts/UserRoleContext";
+import { ThemeProvider as CustomThemeProvider } from "@/contexts/ThemeContext";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import {
   DarkTheme,
@@ -100,18 +101,20 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <UserRoleProvider>
-          <PerformanceProvider>
-            <ThemeProvider
-              value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-            >
-              <RootLayoutNav />
-              <StatusBar style="auto" />
-            </ThemeProvider>
-          </PerformanceProvider>
-        </UserRoleProvider>
-      </AuthProvider>
+      <CustomThemeProvider>
+        <AuthProvider>
+          <UserRoleProvider>
+            <PerformanceProvider>
+              <ThemeProvider
+                value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+              >
+                <RootLayoutNav />
+                <StatusBar style="auto" />
+              </ThemeProvider>
+            </PerformanceProvider>
+          </UserRoleProvider>
+        </AuthProvider>
+      </CustomThemeProvider>
     </ErrorBoundary>
   );
 }
