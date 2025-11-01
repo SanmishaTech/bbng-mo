@@ -12,41 +12,51 @@ export const Colors = {
     background: "#fdfdfd",
     tint: tintColorLight,
     icon: "#687076",
-    tabIconDefault: "#687076",
-    tabIconSelected: tintColorLight,
+    tabIconDefault: "#64748B", // Design system: text_quaternary
+    tabIconSelected: "#8B5CF6", // Design system: primary purple
     // Auth & Dashboard colors
-    primary: "#007AFF",
-    primaryDark: "#0056CC",
+    primary: "#8B5CF6", // Design system: primary purple
+    primaryDark: "#7C3AED", // Design system: gradient end
     secondary: "#5856D6",
-    success: "#34C759",
-    warning: "#FF9500",
-    error: "#FF3B30",
-    info: "#5AC8FA",
+    success: "#10B981", // Design system: success green
+    warning: "#F59E0B", // Design system: warning amber
+    error: "#EF4444", // Design system: error red
+    info: "#06B6D4", // Design system: info cyan
     card: "#FFFFFF",
     border: "#E5E5EA",
     placeholder: "#8E8E93",
     surface: "#FFFFFF",
     surfaceSecondary: "#F8F9FA",
+    // Design system text colors
+    textPrimary: "#11181C",
+    textSecondary: "#64748B",
+    textTertiary: "#94A3B8",
+    textQuaternary: "#CBD5E1",
   },
   dark: {
-    text: "#ECEDEE",
-    background: "#151718",
+    text: "#FFFFFF", // Design system: text_primary
+    background: "#0F172A", // Design system: bg_primary
     tint: tintColorDark,
     icon: "#9BA1A6",
-    tabIconDefault: "#9BA1A6",
-    tabIconSelected: tintColorDark,
+    tabIconDefault: "#64748B", // Design system: text_quaternary
+    tabIconSelected: "#8B5CF6", // Design system: primary purple
     // Auth & Dashboard colors
-    primary: "#0A84FF",
-    primaryDark: "#0056CC",
+    primary: "#8B5CF6", // Design system: primary purple
+    primaryDark: "#7C3AED", // Design system: gradient end
     secondary: "#5E5CE6",
-    success: "#30D158",
-    warning: "#FF9F0A",
-    error: "#FF453A",
-    info: "#64D2FF",
-    card: "#2C2C2E",
-    border: "#38383A",
-    placeholder: "#8E8E93",
-    surface: "#2C2C2E",
-    surfaceSecondary: "#1C1C1E",
+    success: "#10B981", // Design system: success green
+    warning: "#F59E0B", // Design system: warning amber
+    error: "#EF4444", // Design system: error red
+    info: "#06B6D4", // Design system: info cyan
+    card: "#1E293B", // Design system: bg_secondary
+    border: "rgba(255, 255, 255, 0.05)", // Design system: border subtle
+    placeholder: "#64748B",
+    surface: "#1E293B",
+    surfaceSecondary: "#334155", // Design system: bg_tertiary
+    // Design system text colors
+    textPrimary: "#FFFFFF",
+    textSecondary: "#CBD5E1",
+    textTertiary: "#94A3B8",
+    textQuaternary: "#64748B",
   },
 };

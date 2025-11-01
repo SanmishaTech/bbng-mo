@@ -1,22 +1,25 @@
-import { NavigationHeader } from "@/components/NavigationHeader";
-import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { useThemeColor } from "@/hooks/useThemeColor";
 import { del, get, patch } from "@/services/apiService";
+import { IconSymbol } from "@/components/ui/IconSymbol";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Alert,
+    Animated,
     FlatList,
+    Platform,
+    Pressable,
     RefreshControl,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
+    ActivityIndicator,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import Toast from "react-native-toast-message";
 
 interface MemberRef {
@@ -54,6 +57,7 @@ export default function OneToOneListScreen() {
   const [activeTab, setActiveTab] = useState<"scheduled" | "received">(
     "scheduled"
   );
+  const [search, setSearch] = useState("");
 
   const pageSize = 10;
 
@@ -73,13 +77,13 @@ export default function OneToOneListScreen() {
       }
 
       // Load scheduled meetings (ones I requested)
-      const scheduledResponse = await get(
+      const scheduledResponse: any = await get(
         `/api/one-to-ones/requested?memberId=${memberId}&page=1&limit=50`
       );
       const scheduledData = scheduledResponse?.data?.oneToOnes || [];
 
       // Load received meetings (ones requested of me)
-      const receivedResponse = await get(
+      const receivedResponse: any = await get(
         `/api/one-to-ones/received?memberId=${memberId}&page=1&limit=50`
       );
       const receivedData = receivedResponse?.data?.oneToOnes || [];
@@ -185,10 +189,10 @@ export default function OneToOneListScreen() {
 
   const statusMap = useMemo(
     () => ({
-      accepted: { bg: "#E8F5E9", text: "#2E7D32", icon: "✓" },
-      pending: { bg: "#FFF3E0", text: "#EF6C00", icon: "⏳" },
-      rejected: { bg: "#FDECEA", text: "#C62828", icon: "✕" },
-      cancelled: { bg: "#FDECEA", text: "#C62828", icon: "✕" },
+      accepted: { bg: "#10B98120", text: "#10B981", icon: "✓" },
+      pending: { bg: "#F59E0B20", text: "#F59E0B", icon: "⏳" },
+      rejected: { bg: "#EF444420", text: "#EF4444", icon: "✕" },
+      cancelled: { bg: "#EF444420", text: "#EF4444", icon: "✕" },
       default: { bg: colors.card, text: colors.text, icon: "•" },
     }),
     [colors.card, colors.text]
@@ -283,35 +287,51 @@ export default function OneToOneListScreen() {
 
   const EmptyState = () => (
     <View style={styles.emptyState}>
-      <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
+      <Text style={[styles.emptyStateTitle, { color: colors.textPrimary || colors.text }]}>
         No One-to-One Meetings
       </Text>
-      <Text style={[styles.emptyStateText, { color: colors.placeholder }]}>
-        You don’t have any one-to-one meetings yet. Schedule one to get started.
+      <Text style={[styles.emptyStateText, { color: colors.textSecondary || colors.placeholder }]}>
+        You don't have any one-to-one meetings yet. Schedule one to get started.
       </Text>
-      <TouchableOpacity
-        style={[styles.createButton, { backgroundColor: colors.primary }]}
-        onPress={() => router.push("/modules/one-to-ones/create")}
+      <Pressable
+        style={({ pressed }) => [
+          styles.createButton,
+          pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] }
+        ]}
+        onPress={() => router.push("/modules/onetoone/create" as any)}
       >
-        <Text style={styles.createButtonText}>Schedule Meeting</Text>
-      </TouchableOpacity>
+        <LinearGradient
+          colors={[colors.primary, colors.primaryDark]}
+          style={styles.buttonGradient}
+        >
+          <Text style={styles.createButtonText}>Schedule Meeting</Text>
+        </LinearGradient>
+      </Pressable>
     </View>
   );
 
   const ErrorState = () => (
     <View style={styles.emptyState}>
-      <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
+      <Text style={[styles.emptyStateTitle, { color: colors.textPrimary || colors.text }]}>
         Something went wrong
       </Text>
-      <Text style={[styles.emptyStateText, { color: colors.placeholder }]}>
-        We couldn’t load your meetings. Please try again.
+      <Text style={[styles.emptyStateText, { color: colors.textSecondary || colors.placeholder }]}>
+        We couldn't load your meetings. Please try again.
       </Text>
-      <TouchableOpacity
-        style={[styles.createButton, { backgroundColor: colors.primary }]}
+      <Pressable
+        style={({ pressed }) => [
+          styles.createButton,
+          pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] }
+        ]}
         onPress={() => loadOneToOnes()}
       >
-        <Text style={styles.createButtonText}>Retry</Text>
-      </TouchableOpacity>
+        <LinearGradient
+          colors={[colors.primary, colors.primaryDark]}
+          style={styles.buttonGradient}
+        >
+          <Text style={styles.createButtonText}>Retry</Text>
+        </LinearGradient>
+      </Pressable>
     </View>
   );
 
@@ -403,18 +423,25 @@ export default function OneToOneListScreen() {
         {/* Show Accept/Reject buttons only for received meetings with pending status */}
         {activeTab === "received" && item.status === "pending" && (
           <View style={styles.actionsRow}>
-            <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: "#4CAF50" }]}
+            <Pressable
+              style={({ pressed }) => [
+                styles.primaryBtn,
+                { backgroundColor: "#10B981" },
+                pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] }
+              ]}
               onPress={() => handleAcceptReject(item.id, "accepted")}
             >
               <Text style={styles.primaryBtnText}>Accept</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.ghostDangerBtn, { borderColor: "#F44336" }]}
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                styles.ghostDangerBtn,
+                pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] }
+              ]}
               onPress={() => handleAcceptReject(item.id, "cancelled")}
             >
               <Text style={styles.ghostDangerText}>Reject</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         )}
       </View>
@@ -429,24 +456,19 @@ export default function OneToOneListScreen() {
     // Data is already loaded for both tabs, no need to refresh
   };
 
-  const TabButton = ({
-    tab,
-    title,
-  }: {
-    tab: "scheduled" | "received";
-    title: string;
-  }) => (
+  const renderTabButton = (tab: "scheduled" | "received", title: string) => (
     <TouchableOpacity
       style={[
         styles.tabButton,
-        { backgroundColor: activeTab === tab ? colors.primary : "transparent" },
+        { backgroundColor: activeTab === tab ? colors.primary : colors.surface }
       ]}
       onPress={() => handleTabSwitch(tab)}
+      activeOpacity={0.7}
     >
       <Text
         style={[
           styles.tabButtonText,
-          { color: activeTab === tab ? "white" : colors.text },
+          { color: activeTab === tab ? "white" : colors.text }
         ]}
       >
         {title}
@@ -454,44 +476,87 @@ export default function OneToOneListScreen() {
     </TouchableOpacity>
   );
 
-  const content = () => {
-    if (loading) {
+  // Filter meetings based on search
+  const filteredData = useMemo(() => {
+    if (!search) return currentData;
+    return currentData.filter((meeting) => {
+      const searchLower = search.toLowerCase();
+      const memberName = activeTab === "scheduled" 
+        ? meeting.requested?.memberName?.toLowerCase() || ""
+        : meeting.requester?.memberName?.toLowerCase() || "";
+      const orgName = activeTab === "scheduled"
+        ? meeting.requested?.organizationName?.toLowerCase() || ""
+        : meeting.requester?.organizationName?.toLowerCase() || "";
       return (
-        <View style={styles.listContainer}>
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-        </View>
+        memberName.includes(searchLower) ||
+        orgName.includes(searchLower) ||
+        meeting.status?.toLowerCase().includes(searchLower)
       );
-    }
+    });
+  }, [currentData, search, activeTab]);
 
-    if (error) {
-      return <ErrorState />;
-    }
+  const totalMeetings = scheduledMeetings.length + receivedMeetings.length;
 
-    return (
-      <>
-        {/* Tab Navigation */}
-        <View style={styles.tabContainer}>
-          <TabButton
-            tab="scheduled"
-            title={`Meetings I Scheduled (${scheduledMeetings.length})`}
-          />
-          <TabButton
-            tab="received"
-            title={`Meetings with Me (${receivedMeetings.length})`}
-          />
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Gradient Header */}
+      <LinearGradient
+        colors={[colors.primary, colors.primaryDark]}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.headerContent}>
+          <TouchableOpacity 
+            onPress={() => router.push('/(tabs)/_modules' as any)} 
+            style={styles.backButton}
+          >
+            <IconSymbol name="chevron.left" size={24} color="white" />
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>One-to-One Meetings</Text>
+            <Text style={styles.headerSubtitle}>{totalMeetings} total meetings</Text>
+          </View>
+          <View style={{ width: 40 }} />
         </View>
+      </LinearGradient>
 
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <View style={[styles.searchInputContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <IconSymbol name="magnifyingglass" size={20} color={colors.placeholder} />
+          <TextInput
+            style={[styles.searchInput, { color: colors.text }]}
+            placeholder="Search meetings..."
+            placeholderTextColor={colors.placeholder}
+            value={search}
+            onChangeText={setSearch}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <IconSymbol name="xmark.circle.fill" size={20} color={colors.placeholder} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* Tab Navigation */}
+      <View style={[styles.tabContainer, { backgroundColor: colors.background }]}>
+        {renderTabButton("scheduled", `Scheduled (${scheduledMeetings.length})`)}
+        {renderTabButton("received", `Received (${receivedMeetings.length})`)}
+      </View>
+
+      {/* Content */}
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : (
         <FlatList
-          data={currentData}
+          data={filteredData}
           renderItem={renderItem}
           keyExtractor={(item) => String(item.id)}
-          style={styles.list}
-          contentContainerStyle={[
-            styles.listContainer,
-            currentData.length === 0 && { flex: 1 },
-          ]}
+          contentContainerStyle={styles.listContainer}
           ListEmptyComponent={EmptyState}
           refreshControl={
             <RefreshControl
@@ -502,34 +567,17 @@ export default function OneToOneListScreen() {
           }
           showsVerticalScrollIndicator={false}
         />
-      </>
-    );
-  };
+      )}
 
-  const backgroundColor = useThemeColor({}, "background");
-  const cardColor = useThemeColor({}, "surface");
-
-  const rightComponent = (
-    <TouchableOpacity
-      onPress={() => router.push("/modules/onetoone/create")}
-      style={[styles.addButton, { backgroundColor: colors.primary }]}
-    >
-      <ThemedText style={styles.addButtonText}>Add</ThemedText>
-    </TouchableOpacity>
-  );
-
-  return (
-    <ThemedView style={[styles.container, { backgroundColor }]}>
-      <NavigationHeader
-        title="One-to-One Meetings"
-        rightComponent={rightComponent}
-        backPath="/(tabs)/_modules"
-      />
-
-      <View style={[styles.contentContainer, { backgroundColor }]}>
-        {content()}
-      </View>
-    </ThemedView>
+      {/* Floating Add Button */}
+      <TouchableOpacity
+        style={[styles.addButton, { backgroundColor: colors.primary }]}
+        onPress={() => router.push("/modules/onetoone/create" as any)}
+        activeOpacity={0.8}
+      >
+        <IconSymbol name="plus" size={28} color="white" />
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -537,38 +585,100 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    paddingTop: 60,
+    paddingBottom: 30,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    backgroundColor: '#10B981',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTextContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#F7F8FA',
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#333',
+  },
   infoContainer: {
     marginHorizontal: 16,
     marginVertical: 8,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
     alignItems: "center",
+    borderColor: '#D1D5DB',
+    backgroundColor: '#F7F8FA',
   },
   pageInfo: {
     fontSize: 14,
     fontWeight: "600",
   },
-  contentContainer: {
+  loadingContainer: {
     flex: 1,
-    paddingHorizontal: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   addButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
+    position: 'absolute',
+    bottom: 30,
+    right: 30,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
-  addButtonText: {
-    color: "white",
-    fontWeight: "700",
-    fontSize: 15,
-    letterSpacing: 0.3,
+  buttonGradient: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
   },
   headerContainer: {
     paddingHorizontal: 16,
@@ -581,14 +691,6 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: "column",
   },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-  },
-  headerSubtitle: {
-    marginTop: 4,
-    fontSize: 13,
-  },
   primaryCTA: {
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -600,19 +702,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  list: {
-    flex: 1,
-  },
   listContainer: {
-    paddingBottom: 24,
-    gap: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 100,
   },
 
   card: {
-    marginBottom: 16,
-    padding: 18,
-    borderRadius: 20,
-    borderWidth: 0,
+    borderRadius: 16,
+    padding: 16,
+    marginVertical: 8,
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -626,20 +725,22 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   cardTitle: {
-    fontSize: 17,
-    fontWeight: "800",
-    letterSpacing: 0.3,
+    fontSize: 18,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+    lineHeight: 24,
   },
 
   statusPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   statusPillText: {
     fontSize: 11,
-    fontWeight: "800",
+    fontWeight: "600",
     letterSpacing: 0.5,
+    textTransform: "uppercase",
   },
 
   row: {
@@ -765,19 +866,23 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   createButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 14,
     borderRadius: 16,
-    alignItems: "center",
-    marginTop: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    overflow: 'hidden',
+    marginTop: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#8B5CF6',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   createButtonText: {
-    color: "white",
+    color: "#FFFFFF",
     fontWeight: "700",
     fontSize: 14,
   },
@@ -834,21 +939,22 @@ const styles = StyleSheet.create({
 
   // Tab styles
   tabContainer: {
-    flexDirection: "row",
-    marginBottom: 16,
-    paddingVertical: 8,
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 16,
+    paddingVertical: 12,
     borderRadius: 20,
-    marginHorizontal: 4,
-    alignItems: "center",
-    backgroundColor: 'rgba(0,0,0,0.05)',
   },
   tabButtonText: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: '600',
   },
 });

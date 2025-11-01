@@ -14,7 +14,9 @@ import { getMemberAvatar, getMemberCoverPhoto, getTestimonialAvatar } from '@/ut
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Dimensions,
+  Easing,
   FlatList,
   Modal,
   PanResponder,
@@ -49,6 +51,68 @@ export default function MembersTabScreen() {
   const [activeTab, setActiveTab] = useState<'about' | 'testimonials' | 'network'>('about');
   const [categoryMap, setCategoryMap] = useState<Record<number, string>>({});
   const [subCategoryMap, setSubCategoryMap] = useState<Record<number, string>>({});
+  const modalTranslateY = useRef(new Animated.Value(0)).current;
+  const modalScrollOffsetRef = useRef(0);
+  const modalTranslateValueRef = useRef(0);
+  const isClosingRef = useRef(false);
+
+  const handleModalScroll = useCallback((offset: number) => {
+    modalScrollOffsetRef.current = Math.max(0, offset);
+  }, []);
+
+  const closeMobilePanel = useCallback(() => {
+    // Prevent duplicate close animations
+    if (isClosingRef.current) return;
+    isClosingRef.current = true;
+
+    const screenHeight = Dimensions.get('window').height;
+    Animated.timing(modalTranslateY, {
+      toValue: screenHeight,
+      duration: 250,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        // Close modal
+        setMobilePanelOpen(false);
+        // Reset animation values immediately after close
+        modalTranslateY.setValue(0);
+        modalScrollOffsetRef.current = 0;
+        modalTranslateValueRef.current = 0;
+        isClosingRef.current = false;
+      }
+    });
+  }, [modalTranslateY]);
+
+  useEffect(() => {
+    if (mobilePanelOpen) {
+      // Start from bottom of screen
+      const screenHeight = Dimensions.get('window').height;
+      modalTranslateY.setValue(screenHeight);
+      modalScrollOffsetRef.current = 0;
+      modalTranslateValueRef.current = 0;
+      isClosingRef.current = false;
+      
+      // Animate up to visible position
+      Animated.spring(modalTranslateY, {
+        toValue: 0,
+        damping: 25,
+        stiffness: 250,
+        mass: 1,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [mobilePanelOpen, modalTranslateY]);
+
+  useEffect(() => {
+    const listenerId = modalTranslateY.addListener(({ value }) => {
+      modalTranslateValueRef.current = value;
+    });
+
+    return () => {
+      modalTranslateY.removeListener(listenerId);
+    };
+  }, [modalTranslateY]);
 
   // Calculate responsive values based on screen width
   const isTablet = screenWidth >= 768;
@@ -60,16 +124,55 @@ export default function MembersTabScreen() {
   // Pan responder for swipe down to close modal
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only respond to vertical swipes
-        return Math.abs(gestureState.dy) > 10;
+        const isVertical = Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+        const isPullingDown = gestureState.dy > 5;
+        const isPanning = modalTranslateValueRef.current > 0;
+
+        if (!isVertical) return false;
+        if (isPanning) return true;
+        if (isPullingDown && modalScrollOffsetRef.current <= 0) return true;
+
+        return false;
+      },
+      onPanResponderGrant: () => {
+        modalTranslateY.stopAnimation((value) => {
+          modalTranslateValueRef.current = value ?? 0;
+        });
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (modalScrollOffsetRef.current > 0 && gestureState.dy < 0) {
+          return;
+        }
+
+        const translateY = Math.max(0, gestureState.dy);
+        modalTranslateY.setValue(translateY);
+        modalTranslateValueRef.current = translateY;
       },
       onPanResponderRelease: (_, gestureState) => {
-        // Close modal if swiped down more than 100px
-        if (gestureState.dy > 100) {
-          setMobilePanelOpen(false);
+        const shouldClose = gestureState.dy > 120 || gestureState.vy > 0.8;
+        if (shouldClose) {
+          closeMobilePanel();
+        } else {
+          Animated.spring(modalTranslateY, {
+            toValue: 0,
+            bounciness: 6,
+            speed: 12,
+            useNativeDriver: true,
+          }).start(() => {
+            modalTranslateValueRef.current = 0;
+          });
         }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(modalTranslateY, {
+          toValue: 0,
+          bounciness: 6,
+          speed: 12,
+          useNativeDriver: true,
+        }).start(() => {
+          modalTranslateValueRef.current = 0;
+        });
       },
     })
   ).current;
@@ -213,10 +316,12 @@ export default function MembersTabScreen() {
   }, [members]);
 
   const handleSelectMember = async (member: any) => {
+    console.log('🔵 Member selected:', member.name, 'isTablet:', isTablet);
     setSelectedMember(member);
     
     // On mobile, open the modal
     if (!isTablet) {
+      console.log('📱 Opening mobile panel...');
       setMobilePanelOpen(true);
     }
 
@@ -368,12 +473,42 @@ export default function MembersTabScreen() {
   }
 
   // Profile Panel Component (used in both desktop and mobile)
-  const ProfilePanel = ({ member }: { member: any }) => (
-    <ScrollView style={styles.profilePanel} showsVerticalScrollIndicator={false}>
-      <ProfileHeader member={member} onBack={isTablet ? undefined : () => setMobilePanelOpen(false)} />
+  const ProfilePanel = ({ member, onClose, onScroll }: { member: any; onClose?: () => void; onScroll?: (offset: number) => void }) => {
+    const scrollViewRef = useRef<ScrollView>(null);
+    const scrollPositionRef = useRef(0);
+
+    // Save scroll position when content scrolls
+    const handleScroll = useCallback((event: any) => {
+      scrollPositionRef.current = event.nativeEvent.contentOffset.y;
+      onScroll?.(event.nativeEvent.contentOffset.y);
+    }, [onScroll]);
+
+    // Preserve scroll position when tab changes
+    useEffect(() => {
+      // Small delay to ensure content is rendered before scrolling
+      const timer = setTimeout(() => {
+        if (scrollViewRef.current && scrollPositionRef.current > 0) {
+          scrollViewRef.current.scrollTo({
+            y: scrollPositionRef.current,
+            animated: false,
+          });
+        }
+      }, 10);
+      return () => clearTimeout(timer);
+    }, [activeTab]);
+
+    return (
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.profilePanel}
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={handleScroll}
+      >
+      <ProfileHeader member={member} onBack={isTablet ? undefined : onClose} />
 
       {/* Info and Activity Cards */}
-      <View style={styles.cardsRow}>
+      <View style={[styles.cardsRow, { paddingHorizontal: 16 }]}>
         <View style={styles.cardColumn}>
           <InfoCard member={member} />
         </View>
@@ -383,7 +518,7 @@ export default function MembersTabScreen() {
       </View>
 
       {/* Tabs */}
-      <View style={[styles.tabsContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.tabsContainer, { backgroundColor: colors.card, borderColor: colors.border, marginHorizontal: 16 }]}>
         <TouchableOpacity
           style={[
             styles.tab,
@@ -424,7 +559,8 @@ export default function MembersTabScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Tab Content */}
+      {/* Tab Content - Render only active tab */}
+      <View style={{ paddingHorizontal: 16 }}>
       {activeTab === 'about' && (
         <View style={[styles.tabCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <ThemedText style={styles.tabCardTitle}>Profile Details</ThemedText>
@@ -457,7 +593,11 @@ export default function MembersTabScreen() {
         </View>
       )}
 
-      {activeTab === 'testimonials' && <TestimonialsCard testimonials={member.testimonials} member={member} />}
+      {activeTab === 'testimonials' && (
+        <View style={{ marginTop: 12 }}>
+          <TestimonialsCard testimonials={member.testimonials} member={member} />
+        </View>
+      )}
 
       {activeTab === 'network' && (
         <View style={[styles.tabCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -482,8 +622,10 @@ export default function MembersTabScreen() {
           </View>
         </View>
       )}
+      </View>
     </ScrollView>
-  );
+    );
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -616,27 +758,45 @@ export default function MembersTabScreen() {
       {/* Mobile Slide-Over Modal */}
       <Modal
         visible={mobilePanelOpen && !isTablet}
-        animationType="slide"
+        animationType="none"
         transparent
-        onRequestClose={() => setMobilePanelOpen(false)}
+        onRequestClose={closeMobilePanel}
       >
         <View style={styles.modalOverlay}>
-          <View
-            style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}
+          {/* Backdrop - Touchable area */}
+          <TouchableOpacity 
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={closeMobilePanel}
+          />
+          
+          {/* Modal Content - Non-touchable-through */}
+          <Animated.View
+            style={[
+              styles.modalContent,
+              {
+                backgroundColor: colors.background,
+                borderColor: colors.border,
+                transform: [{ translateY: modalTranslateY }],
+              },
+            ]}
+            onStartShouldSetResponder={() => true}
+            onResponderTerminationRequest={() => false}
+            {...panResponder.panHandlers}
           >
             {/* Pull Handle with Swipe Gesture */}
-            <View style={styles.modalHeader} {...panResponder.panHandlers}>
+            <View pointerEvents="none" style={styles.modalHandleOverlay}>
               <View style={[styles.pullHandle, { backgroundColor: colors.tabIconDefault + '40' }]} />
-              <View style={styles.modalHeaderContent}>
-                <ThemedText style={styles.modalTitle}>Profile</ThemedText>
-                <TouchableOpacity onPress={() => setMobilePanelOpen(false)} activeOpacity={0.7}>
-                  <ThemedText style={styles.closeIcon}>✕</ThemedText>
-                </TouchableOpacity>
-              </View>
             </View>
             
-            {selectedMember && <ProfilePanel member={selectedMember} />}
-          </View>
+            {selectedMember && (
+              <ProfilePanel
+                member={selectedMember}
+                onClose={closeMobilePanel}
+                onScroll={handleModalScroll}
+              />
+            )}
+          </Animated.View>
         </View>
       </Modal>
     </ThemedView>
@@ -1000,8 +1160,15 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   modalContent: {
     maxHeight: '88%',
@@ -1021,12 +1188,14 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  modalHeader: {
-    paddingTop: 8,
+  modalHandleOverlay: {
+    position: 'absolute',
+    top: 8,
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    alignItems: 'center',
     paddingBottom: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
   },
   pullHandle: {
     width: 48,
@@ -1034,18 +1203,5 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     alignSelf: 'center',
     marginBottom: 12,
-  },
-  modalHeaderContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  closeIcon: {
-    fontSize: 24,
-    opacity: 0.5,
   },
 });

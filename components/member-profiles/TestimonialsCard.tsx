@@ -1,3 +1,5 @@
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 import { getTestimonialAvatar } from '@/utils/avatarUtils';
 import React, { useEffect, useState } from 'react';
 import { Animated, Image, Platform, StyleSheet, Text, View } from 'react-native';
@@ -9,6 +11,8 @@ interface TestimonialsCardProps {
 }
 
 export const TestimonialsCard: React.FC<TestimonialsCardProps> = ({ testimonials, member, index = 0 }) => {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme];
   const [scaleAnim] = useState(new Animated.Value(0.9));
   const backendUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -24,12 +28,12 @@ export const TestimonialsCard: React.FC<TestimonialsCardProps> = ({ testimonials
 
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.header}>
-          <Text style={styles.title}>Testimonials</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Testimonials</Text>
           {testimonials.length > 0 && (
-            <View style={styles.countBadge}>
-              <Text style={styles.countText}>{testimonials.length}</Text>
+            <View style={[styles.countBadge, { backgroundColor: colors.primary + '20' }]}>
+              <Text style={[styles.countText, { color: colors.primary }]}>{testimonials.length}</Text>
             </View>
           )}
         </View>
@@ -49,12 +53,13 @@ export const TestimonialsCard: React.FC<TestimonialsCardProps> = ({ testimonials
                 item={item}
                 avatarUrl={getTestimonialAvatar(testimonialUser, backendUrl)}
                 index={idx}
+                colors={colors}
               />
             );
           })}
           
           {testimonials.length === 0 && (
-            <Text style={styles.emptyText}>No testimonials yet</Text>
+            <Text style={[styles.emptyText, { color: colors.placeholder }]}>No testimonials yet</Text>
           )}
         </View>
       </View>
@@ -62,7 +67,7 @@ export const TestimonialsCard: React.FC<TestimonialsCardProps> = ({ testimonials
   );
 };
 
-const TestimonialItem = ({ item, avatarUrl, index }: any) => {
+const TestimonialItem = ({ item, avatarUrl, index, colors }: any) => {
   const [slideAnim] = useState(new Animated.Value(20));
   const [fadeAnim] = useState(new Animated.Value(0));
 
@@ -88,12 +93,13 @@ const TestimonialItem = ({ item, avatarUrl, index }: any) => {
       style={[
         styles.testimonialRow,
         {
+          borderBottomColor: colors.border,
           opacity: fadeAnim,
           transform: [{ translateY: slideAnim }],
         },
       ]}
     >
-      <View style={styles.avatarContainer}>
+      <View style={[styles.avatarContainer, { backgroundColor: colors.surface }]}>
         <Image 
           source={{ uri: avatarUrl }} 
           style={styles.avatar} 
@@ -102,13 +108,13 @@ const TestimonialItem = ({ item, avatarUrl, index }: any) => {
       </View>
     
       <View style={styles.testimonialContent}>
-        <Text style={styles.authorName}>{item.by}</Text>
+        <Text style={[styles.authorName, { color: colors.text }]}>{item.by}</Text>
         
-        <Text style={styles.testimonialText}>
+        <Text style={[styles.testimonialText, { color: colors.placeholder }]}>
           {item.text}
         </Text>
         
-        <Text style={styles.testimonialDate}>
+        <Text style={[styles.testimonialDate, { color: colors.placeholder }]}>
           {item.date}
         </Text>
       </View>
@@ -118,11 +124,9 @@ const TestimonialItem = ({ item, avatarUrl, index }: any) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#1E293B',
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -144,11 +148,9 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
     letterSpacing: -0.3,
   },
   countBadge: {
-    backgroundColor: '#8B5CF620',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -156,7 +158,6 @@ const styles = StyleSheet.create({
   countText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#8B5CF6',
   },
   content: {
     gap: 16,
@@ -166,14 +167,12 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   avatarContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
     overflow: 'hidden',
-    backgroundColor: '#334155',
   },
   avatar: {
     width: '100%',
@@ -186,24 +185,20 @@ const styles = StyleSheet.create({
   authorName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
   },
   testimonialText: {
     fontSize: 14,
     fontWeight: '400',
-    color: '#CBD5E1',
     lineHeight: 20,
   },
   testimonialDate: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#64748B',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   emptyText: {
     fontSize: 13,
-    color: '#64748B',
     textAlign: 'center',
     paddingVertical: 32,
   },

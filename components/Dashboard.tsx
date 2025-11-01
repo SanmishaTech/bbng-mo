@@ -37,6 +37,11 @@ export default function Dashboard() {
   const colors = Colors[colorScheme ?? "light"]
   const insets = useSafeAreaInsets()
 
+  // Debug: Log theme changes
+  useEffect(() => {
+    console.log('[Dashboard] Theme updated:', colorScheme, 'Background:', colors.background);
+  }, [colorScheme])
+
   const [fadeAnim] = useState(new Animated.Value(0))
   const scrollY = useRef(new Animated.Value(0)).current
 
@@ -217,9 +222,9 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <ActivityIndicator size="large" color="#8B5CF6" />
-        <Text style={styles.loadingText}>Loading dashboard...</Text>
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.placeholder }]}>Loading dashboard...</Text>
       </View>
     )
   }
@@ -231,11 +236,14 @@ export default function Dashboard() {
   })
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Floating Header - appears on scroll */}
       <Animated.View style={[styles.floatingHeader, { opacity: headerOpacity }]}>
-        <LinearGradient colors={["#1F2937", "#111827"]} style={styles.floatingHeaderGradient}>
-          <Text style={styles.floatingHeaderTitle}>Dashboard</Text>
+        <LinearGradient 
+          colors={colorScheme === 'dark' ? ["#1F2937", "#111827"] : [colors.primary, colors.primaryDark]} 
+          style={styles.floatingHeaderGradient}
+        >
+          <Text style={[styles.floatingHeaderTitle, { color: colorScheme === 'dark' ? '#FFFFFF' : colors.text }]}>Dashboard</Text>
         </LinearGradient>
       </Animated.View>
 
@@ -249,10 +257,13 @@ export default function Dashboard() {
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
           useNativeDriver: true,
         })}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#8B5CF6" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {/* Header Section */}
-        <LinearGradient colors={["#1F2937", "#111827"]} style={styles.header}>
+        <LinearGradient 
+          colors={colorScheme === 'dark' ? ["#1F2937", "#111827"] : [colors.primary, colors.primaryDark]} 
+          style={styles.header}
+        >
           <View style={styles.headerContent}>
             <View style={styles.profileSection}>
               <View style={styles.avatarContainer}>
@@ -261,23 +272,23 @@ export default function Dashboard() {
                 </View>
               </View>
               <View style={styles.greetingContainer}>
-                <Text style={styles.greeting}>Hi, {user?.name?.split(" ")[0] || "User"}</Text>
-                <Text style={styles.subtitle}>Your Network</Text>
+                <Text style={[styles.greeting, { color: '#FFFFFF' }]}>Hi, {user?.name?.split(" ")[0] || "User"}</Text>
+                <Text style={[styles.subtitle, { color: 'rgba(255, 255, 255, 0.8)' }]}>Your Network</Text>
               </View>
             </View>
-            <Pressable style={styles.transactionsButton} onPress={() => router.push("/(tabs)/performance")}>
-              <Text style={styles.transactionsButtonText}>Performance</Text>
+            <Pressable style={[styles.transactionsButton, { backgroundColor: 'rgba(255, 255, 255, 0.2)', borderColor: 'rgba(255, 255, 255, 0.3)' }]} onPress={() => router.push("/(tabs)/performance")}>
+              <Text style={[styles.transactionsButtonText, { color: '#FFFFFF' }]}>BBNG</Text>
             </Pressable>
           </View>
 
           {/* Main Metric */}
           <View style={styles.mainMetricContainer}>
-            <Text style={styles.mainMetricLabel}>Total Business</Text>
-            <Text style={styles.mainMetricValue}>₹{businessTotal.toLocaleString()}</Text>
+            <Text style={[styles.mainMetricLabel, { color: 'rgba(255, 255, 255, 0.8)' }]}>Total Business Generated</Text>
+            <Text style={[styles.mainMetricValue, { color: '#FFFFFF' }]}>₹{businessTotal.toLocaleString()}</Text>
           </View>
         </LinearGradient>
 
-        <View style={styles.content}>
+        <View style={[styles.content, { backgroundColor: colors.background }]}>
           {/* Category Cards */}
           <View style={styles.categoryGrid}>
             {categoryData.map((category, index) => (
@@ -289,13 +300,13 @@ export default function Dashboard() {
           {user?.role !== "admin" && (
             <>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Quick Actions</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
               </View>
               <FlatList
                 horizontal
                 data={filteredQuickActions}
                 renderItem={({ item, index }) => (
-                  <QuickActionButton action={item} onPress={() => handleQuickAction(item.id)} index={index} />
+                  <QuickActionButton action={item} onPress={() => handleQuickAction(item.id)} index={index} colors={colors} />
                 )}
                 keyExtractor={(item) => item.id}
                 showsHorizontalScrollIndicator={false}
@@ -308,7 +319,7 @@ export default function Dashboard() {
           {user?.role !== "admin" && hasChapterAccess && (
             <>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{user?.member?.chapter?.name || "Chapter"} Performance</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{user?.member?.chapter?.name || "Chapter"} Performance</Text>
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>CHAPTER</Text>
                 </View>
@@ -320,6 +331,7 @@ export default function Dashboard() {
                   icon="person.2.fill"
                   color="#8B5CF6"
                   index={0}
+                  colors={colors}
                 />
                 <StatCard
                   title="Business"
@@ -327,6 +339,7 @@ export default function Dashboard() {
                   icon="dollarsign.circle.fill"
                   color="#10B981"
                   index={1}
+                  colors={colors}
                 />
                 <StatCard
                   title="One-to-One"
@@ -334,6 +347,7 @@ export default function Dashboard() {
                   icon="person.2.fill"
                   color="#F59E0B"
                   index={2}
+                  colors={colors}
                 />
                 <StatCard
                   title="Visitors"
@@ -341,6 +355,7 @@ export default function Dashboard() {
                   icon="person.3.fill"
                   color="#06B6D4"
                   index={3}
+                  colors={colors}
                   onPress={() => router.push("/modules/visitors" as any)}
                 />
               </View>
@@ -351,7 +366,7 @@ export default function Dashboard() {
           {user?.role !== "admin" && (
             <>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Your Activity</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Your Activity</Text>
                 <View style={[styles.badge, { backgroundColor: "#F59E0B15" }]}>
                   <Text style={[styles.badgeText, { color: "#F59E0B" }]}>PERSONAL</Text>
                 </View>
@@ -364,6 +379,7 @@ export default function Dashboard() {
                   color="#10B981"
                   date="This month"
                   index={0}
+                  colors={colors}
                 />
                 <ActivityItem
                   title="Business Given"
@@ -372,6 +388,7 @@ export default function Dashboard() {
                   color="#F59E0B"
                   date="This month"
                   index={1}
+                  colors={colors}
                 />
                 <ActivityItem
                   title="References Received"
@@ -380,6 +397,7 @@ export default function Dashboard() {
                   color="#06B6D4"
                   date="This month"
                   index={2}
+                  colors={colors}
                 />
                 <ActivityItem
                   title="References Given"
@@ -388,6 +406,7 @@ export default function Dashboard() {
                   color="#8B5CF6"
                   date="This month"
                   index={3}
+                  colors={colors}
                 />
               </View>
             </>
@@ -395,12 +414,12 @@ export default function Dashboard() {
 
           {/* Meetings & Messages */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Activity</Text>
           </View>
           <View style={styles.twoColumnGrid}>
-            <View style={styles.activityCard}>
+            <View style={[styles.activityCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={styles.activityCardHeader}>
-                <Text style={styles.activityCardTitle}>Meetings</Text>
+                <Text style={[styles.activityCardTitle, { color: colors.text }]}>Meetings</Text>
                 <View style={[styles.countBadge, { backgroundColor: "#8B5CF615" }]}>
                   <Text style={[styles.countBadgeText, { color: "#8B5CF6" }]}>{meetings.length}</Text>
                 </View>
@@ -408,17 +427,17 @@ export default function Dashboard() {
               <ScrollView style={styles.activityCardContent} showsVerticalScrollIndicator={false}>
                 {meetings.length > 0 ? (
                   meetings.map((meeting, index) => (
-                    <MeetingItem key={meeting.id} meeting={meeting} index={index} />
+                    <MeetingItem key={meeting.id} meeting={meeting} index={index} colors={colors} />
                   ))
                 ) : (
-                  <Text style={styles.emptyText}>No upcoming meetings</Text>
+                  <Text style={[styles.emptyText, { color: colors.placeholder }]}>No upcoming meetings</Text>
                 )}
               </ScrollView>
             </View>
 
-            <View style={styles.activityCard}>
+            <View style={[styles.activityCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={styles.activityCardHeader}>
-                <Text style={styles.activityCardTitle}>Messages</Text>
+                <Text style={[styles.activityCardTitle, { color: colors.text }]}>Messages</Text>
                 <View style={[styles.countBadge, { backgroundColor: "#10B98115" }]}>
                   <Text style={[styles.countBadgeText, { color: "#10B981" }]}>{messages.length}</Text>
                 </View>
@@ -431,10 +450,11 @@ export default function Dashboard() {
                       message={message}
                       index={index}
                       onAttachmentPress={handleAttachmentPress}
+                      colors={colors}
                     />
                   ))
                 ) : (
-                  <Text style={styles.emptyText}>No messages</Text>
+                  <Text style={[styles.emptyText, { color: colors.placeholder }]}>No messages</Text>
                 )}
               </ScrollView>
             </View>
@@ -442,25 +462,25 @@ export default function Dashboard() {
 
           {/* Trainings & Birthdays */}
           <View style={styles.twoColumnGrid}>
-            <View style={styles.activityCard}>
+            <View style={[styles.activityCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={styles.activityCardHeader}>
-                <Text style={styles.activityCardTitle}>Training</Text>
+                <Text style={[styles.activityCardTitle, { color: colors.text }]}>Training</Text>
                 <View style={[styles.countBadge, { backgroundColor: "#F59E0B15" }]}>
                   <Text style={[styles.countBadgeText, { color: "#F59E0B" }]}>{trainings.length}</Text>
                 </View>
               </View>
               <ScrollView style={styles.activityCardContent} showsVerticalScrollIndicator={false}>
                 {trainings.length > 0 ? (
-                  trainings.map((training, index) => <TrainingItem key={training.id} training={training} index={index} />)
+                  trainings.map((training, index) => <TrainingItem key={training.id} training={training} index={index} colors={colors} />)
                 ) : (
-                  <Text style={styles.emptyText}>No upcoming trainings</Text>
+                  <Text style={[styles.emptyText, { color: colors.placeholder }]}>No upcoming trainings</Text>
                 )}
               </ScrollView>
             </View>
 
-            <View style={styles.activityCard}>
+            <View style={[styles.activityCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={styles.activityCardHeader}>
-                <Text style={styles.activityCardTitle}>Birthdays</Text>
+                <Text style={[styles.activityCardTitle, { color: colors.text }]}>Birthdays</Text>
                 <View style={[styles.countBadge, { backgroundColor: "#EC489815" }]}>
                   <Text style={[styles.countBadgeText, { color: "#EC4899" }]}>{upcomingBirthdays.length}</Text>
                 </View>
@@ -468,10 +488,10 @@ export default function Dashboard() {
               <ScrollView style={styles.activityCardContent} showsVerticalScrollIndicator={false}>
                 {upcomingBirthdays.length > 0 ? (
                   upcomingBirthdays.map((birthday, index) => (
-                    <BirthdayItem key={birthday.id} birthday={birthday} index={index} />
+                    <BirthdayItem key={birthday.id} birthday={birthday} index={index} colors={colors} />
                   ))
                 ) : (
-                  <Text style={styles.emptyText}>No upcoming birthdays</Text>
+                  <Text style={[styles.emptyText, { color: colors.placeholder }]}>No upcoming birthdays</Text>
                 )}
               </ScrollView>
             </View>
@@ -514,7 +534,7 @@ const CategoryCard = ({ category, index }: any) => {
 }
 
 // Quick Action Button Component
-const QuickActionButton = ({ action, onPress, index }: any) => {
+const QuickActionButton = ({ action, onPress, index, colors }: any) => {
   const [scaleAnim] = useState(new Animated.Value(0.9))
 
   useEffect(() => {
@@ -529,20 +549,24 @@ const QuickActionButton = ({ action, onPress, index }: any) => {
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
       <Pressable
-        style={({ pressed }) => [styles.quickActionButton, pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] }]}
+        style={({ pressed }) => [
+          styles.quickActionButton, 
+          { backgroundColor: colors.card, borderColor: colors.border },
+          pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] }
+        ]}
         onPress={onPress}
       >
         <View style={[styles.quickActionIcon, { backgroundColor: action.color + "20" }]}>
           <IconSymbol name={action.icon} size={24} color={action.color} />
         </View>
-        <Text style={styles.quickActionText}>{action.title}</Text>
+        <Text style={[styles.quickActionText, { color: colors.text }]}>{action.title}</Text>
       </Pressable>
     </Animated.View>
   )
 }
 
 // Stat Card Component
-const StatCard = ({ title, value, icon, color, onPress, index }: any) => {
+const StatCard = ({ title, value, icon, color, onPress, index, colors }: any) => {
   const [scaleAnim] = useState(new Animated.Value(0.9))
 
   useEffect(() => {
@@ -557,22 +581,26 @@ const StatCard = ({ title, value, icon, color, onPress, index }: any) => {
   return (
     <Animated.View style={[styles.statCardContainer, { transform: [{ scale: scaleAnim }] }]}>
       <Pressable
-        style={({ pressed }) => [styles.statCard, pressed && { opacity: 0.7 }]}
+        style={({ pressed }) => [
+          styles.statCard, 
+          { backgroundColor: colors.card, borderColor: colors.border },
+          pressed && { opacity: 0.7 }
+        ]}
         onPress={onPress}
         disabled={!onPress}
       >
         <View style={[styles.statIconContainer, { backgroundColor: color + "15" }]}>
           <IconSymbol name={icon} size={20} color={color} />
         </View>
-        <Text style={styles.statValue}>{value}</Text>
-        <Text style={styles.statLabel}>{title}</Text>
+        <Text style={[styles.statValue, { color: colors.text }]}>{value}</Text>
+        <Text style={[styles.statLabel, { color: colors.placeholder }]}>{title}</Text>
       </Pressable>
     </Animated.View>
   )
 }
 
 // Activity Item Component
-const ActivityItem = ({ title, value, icon, color, date, index }: any) => {
+const ActivityItem = ({ title, value, icon, color, date, index, colors }: any) => {
   const [slideAnim] = useState(new Animated.Value(30))
   const [fadeAnim] = useState(new Animated.Value(0))
 
@@ -597,7 +625,9 @@ const ActivityItem = ({ title, value, icon, color, date, index }: any) => {
     <Animated.View
       style={[
         styles.activityItemContainer,
-        {
+        { 
+          backgroundColor: colors.card,
+          borderColor: colors.border,
           opacity: fadeAnim,
           transform: [{ translateX: slideAnim }],
         },
@@ -607,8 +637,8 @@ const ActivityItem = ({ title, value, icon, color, date, index }: any) => {
         <IconSymbol name={icon} size={20} color={color} />
       </View>
       <View style={styles.activityItemContent}>
-        <Text style={styles.activityItemTitle}>{title}</Text>
-        <Text style={styles.activityItemDate}>{date}</Text>
+        <Text style={[styles.activityItemTitle, { color: colors.text }]}>{title}</Text>
+        <Text style={[styles.activityItemDate, { color: colors.placeholder }]}>{date}</Text>
       </View>
       <Text style={[styles.activityItemValue, { color: color }]}>{value}</Text>
     </Animated.View>
@@ -616,7 +646,7 @@ const ActivityItem = ({ title, value, icon, color, date, index }: any) => {
 }
 
 // Meeting Item Component
-const MeetingItem = ({ meeting, index }: any) => {
+const MeetingItem = ({ meeting, index, colors }: any) => {
   const [slideAnim] = useState(new Animated.Value(20))
   const [fadeAnim] = useState(new Animated.Value(0))
 
@@ -642,6 +672,7 @@ const MeetingItem = ({ meeting, index }: any) => {
       style={[
         styles.listItem,
         {
+          borderBottomColor: colors.border,
           opacity: fadeAnim,
           transform: [{ translateY: slideAnim }],
         },
@@ -651,20 +682,20 @@ const MeetingItem = ({ meeting, index }: any) => {
         <IconSymbol name="calendar" size={16} color="#8B5CF6" />
       </View>
       <View style={styles.listItemContent}>
-        <Text style={styles.listItemTitle} numberOfLines={1}>
+        <Text style={[styles.listItemTitle, { color: colors.text }]} numberOfLines={1}>
           {meeting.meetingTitle}
         </Text>
-        <Text style={styles.listItemSubtitle} numberOfLines={1}>
+        <Text style={[styles.listItemSubtitle, { color: colors.placeholder }]} numberOfLines={1}>
           {meeting.meetingVenue}
         </Text>
       </View>
-      <Text style={styles.listItemDate}>{new Date(meeting.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</Text>
+      <Text style={[styles.listItemDate, { color: colors.placeholder }]}>{new Date(meeting.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</Text>
     </Animated.View>
   )
 }
 
 // Message Item Component
-const MessageItem = ({ message, index, onAttachmentPress }: any) => {
+const MessageItem = ({ message, index, onAttachmentPress, colors }: any) => {
   const [slideAnim] = useState(new Animated.Value(20))
   const [fadeAnim] = useState(new Animated.Value(0))
 
@@ -690,6 +721,7 @@ const MessageItem = ({ message, index, onAttachmentPress }: any) => {
       style={[
         styles.listItem,
         {
+          borderBottomColor: colors.border,
           opacity: fadeAnim,
           transform: [{ translateY: slideAnim }],
         },
@@ -699,20 +731,20 @@ const MessageItem = ({ message, index, onAttachmentPress }: any) => {
         <IconSymbol name="envelope.fill" size={16} color="#10B981" />
       </View>
       <View style={styles.listItemContent}>
-        <Text style={styles.listItemTitle} numberOfLines={1}>
+        <Text style={[styles.listItemTitle, { color: colors.text }]} numberOfLines={1}>
           {message.heading}
         </Text>
-        <Text style={styles.listItemSubtitle} numberOfLines={1}>
+        <Text style={[styles.listItemSubtitle, { color: colors.placeholder }]} numberOfLines={1}>
           {message.powerteam}
         </Text>
       </View>
-      <Text style={styles.listItemDate}>{new Date(message.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</Text>
+      <Text style={[styles.listItemDate, { color: colors.placeholder }]}>{new Date(message.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</Text>
     </Animated.View>
   )
 }
 
 // Training Item Component
-const TrainingItem = ({ training, index }: any) => {
+const TrainingItem = ({ training, index, colors }: any) => {
   const [slideAnim] = useState(new Animated.Value(20))
   const [fadeAnim] = useState(new Animated.Value(0))
 
@@ -738,6 +770,7 @@ const TrainingItem = ({ training, index }: any) => {
       style={[
         styles.listItem,
         {
+          borderBottomColor: colors.border,
           opacity: fadeAnim,
           transform: [{ translateY: slideAnim }],
         },
@@ -747,20 +780,20 @@ const TrainingItem = ({ training, index }: any) => {
         <IconSymbol name="book.fill" size={16} color="#F59E0B" />
       </View>
       <View style={styles.listItemContent}>
-        <Text style={styles.listItemTitle} numberOfLines={1}>
+        <Text style={[styles.listItemTitle, { color: colors.text }]} numberOfLines={1}>
           {training.title}
         </Text>
-        <Text style={styles.listItemSubtitle} numberOfLines={1}>
+        <Text style={[styles.listItemSubtitle, { color: colors.placeholder }]} numberOfLines={1}>
           {training.venue}
         </Text>
       </View>
-      <Text style={styles.listItemDate}>{new Date(training.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</Text>
+      <Text style={[styles.listItemDate, { color: colors.placeholder }]}>{new Date(training.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</Text>
     </Animated.View>
   )
 }
 
 // Birthday Item Component
-const BirthdayItem = ({ birthday, index }: any) => {
+const BirthdayItem = ({ birthday, index, colors }: any) => {
   const [slideAnim] = useState(new Animated.Value(20))
   const [fadeAnim] = useState(new Animated.Value(0))
 
@@ -789,6 +822,7 @@ const BirthdayItem = ({ birthday, index }: any) => {
       style={[
         styles.listItem,
         {
+          borderBottomColor: colors.border,
           opacity: fadeAnim,
           transform: [{ translateY: slideAnim }],
         },
@@ -798,14 +832,18 @@ const BirthdayItem = ({ birthday, index }: any) => {
         <IconSymbol name="gift" size={16} color="#EC4899" />
       </View>
       <View style={styles.listItemContent}>
-        <Text style={styles.listItemTitle} numberOfLines={1}>
+        <Text style={[styles.listItemTitle, { color: colors.text }]} numberOfLines={1}>
           {birthday.memberName}
         </Text>
-        <Text style={styles.listItemSubtitle} numberOfLines={1}>
+        <Text style={[styles.listItemSubtitle, { color: colors.placeholder }]} numberOfLines={1}>
           {birthday.organizationName}
         </Text>
       </View>
-      <Text style={[styles.listItemDate, birthday.daysUntilBirthday === 0 && { color: "#EC4899", fontWeight: "700" }]}>
+      <Text style={[
+        styles.listItemDate, 
+        { color: birthday.daysUntilBirthday === 0 ? "#EC4899" : colors.placeholder },
+        birthday.daysUntilBirthday === 0 && { fontWeight: "700" }
+      ]}>
         {daysText}
       </Text>
     </Animated.View>

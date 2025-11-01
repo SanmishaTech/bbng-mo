@@ -1,4 +1,6 @@
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 import React, { useEffect, useState } from 'react';
 import { Animated, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -8,6 +10,8 @@ interface InfoCardProps {
 }
 
 export const InfoCard: React.FC<InfoCardProps> = ({ member, index = 0 }) => {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme];
   const [scaleAnim] = useState(new Animated.Value(0.9));
 
   useEffect(() => {
@@ -38,8 +42,8 @@ export const InfoCard: React.FC<InfoCardProps> = ({ member, index = 0 }) => {
 
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Contact Information</Text>
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Text style={[styles.title, { color: colors.text }]}>Contact Information</Text>
         
         <View style={styles.content}>
           {items.map((item, idx) => (
@@ -55,8 +59,8 @@ export const InfoCard: React.FC<InfoCardProps> = ({ member, index = 0 }) => {
                 <IconSymbol name={item.icon} size={20} color={item.color} />
               </View>
               <View style={styles.itemContent}>
-                <Text style={styles.itemLabel}>{item.label}</Text>
-                <Text style={styles.itemValue} numberOfLines={1}>{item.value}</Text>
+                <Text style={[styles.itemLabel, { color: colors.placeholder }]}>{item.label}</Text>
+                <Text style={[styles.itemValue, { color: colors.text }]} numberOfLines={1}>{item.value}</Text>
               </View>
             </Pressable>
           ))}
@@ -68,11 +72,9 @@ export const InfoCard: React.FC<InfoCardProps> = ({ member, index = 0 }) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#1E293B',
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -88,7 +90,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
     marginBottom: 16,
     letterSpacing: -0.3,
   },
@@ -115,14 +116,12 @@ const styles = StyleSheet.create({
   itemLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#64748B',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   itemValue: {
     fontSize: 14,
     fontWeight: '400',
-    color: '#FFFFFF',
     lineHeight: 20,
   },
 });

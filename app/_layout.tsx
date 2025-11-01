@@ -2,8 +2,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Colors } from "@/constants/Colors";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { PerformanceProvider } from "@/contexts/PerformanceContext";
+import { ThemeProvider as CustomThemeProvider, useTheme } from "@/contexts/ThemeContext";
 import { UserRoleProvider } from "@/contexts/UserRoleContext";
-import { ThemeProvider as CustomThemeProvider } from "@/contexts/ThemeContext";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import {
   DarkTheme,
@@ -17,8 +17,6 @@ import React, { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 import "react-native-reanimated";
 import Toast from "react-native-toast-message";
-import { TamaguiProvider } from '@tamagui/core';
-import config from '../tamagui.config';
 
 function RootLayoutNav() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -27,6 +25,11 @@ function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme];
   const [hasInitialized, setHasInitialized] = React.useState(false);
+
+  // Debug: Log when RootLayoutNav re-renders
+  useEffect(() => {
+    console.log('[RootLayoutNav] Color scheme updated:', colorScheme);
+  }, [colorScheme]);
 
   useEffect(() => {
     // Only proceed with navigation logic after initial loading is complete
@@ -76,7 +79,7 @@ function RootLayoutNav() {
 
   return (
     <>
-      <Stack>
+      <Stack key={colorScheme}>
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modules" options={{ headerShown: false }} />
@@ -89,8 +92,33 @@ function RootLayoutNav() {
   );
 }
 
-export default function RootLayout() {
+// Wrapper component inside CustomThemeProvider to react to theme changes
+function ThemedApp() {
+  const { renderKey } = useTheme();
   const colorScheme = useColorScheme();
+
+  // Debug: Log when ThemedApp re-renders with new theme
+  React.useEffect(() => {
+    console.log('[ThemedApp] Color scheme updated:', colorScheme, 'renderKey:', renderKey);
+  }, [colorScheme, renderKey]);
+
+  return (
+    <AuthProvider>
+      <UserRoleProvider>
+        <PerformanceProvider>
+          <ThemeProvider
+            value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+          >
+            <RootLayoutNav />
+            <StatusBar style="auto" />
+          </ThemeProvider>
+        </PerformanceProvider>
+      </UserRoleProvider>
+    </AuthProvider>
+  );
+}
+
+export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
@@ -102,18 +130,7 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <CustomThemeProvider>
-        <AuthProvider>
-          <UserRoleProvider>
-            <PerformanceProvider>
-              <ThemeProvider
-                value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-              >
-                <RootLayoutNav />
-                <StatusBar style="auto" />
-              </ThemeProvider>
-            </PerformanceProvider>
-          </UserRoleProvider>
-        </AuthProvider>
+        <ThemedApp />
       </CustomThemeProvider>
     </ErrorBoundary>
   );

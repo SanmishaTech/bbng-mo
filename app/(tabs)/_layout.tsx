@@ -14,10 +14,16 @@ export default function TabLayout() {
   const colors = Colors[colorScheme];
   const insets = useSafeAreaInsets();
 
+  // Debug: Log when TabLayout re-renders
+  React.useEffect(() => {
+    console.log('[TabLayout] Color scheme updated:', colorScheme);
+  }, [colorScheme]);
+
   return (
     <Tabs
+      key={colorScheme}
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: colors.tabIconSelected,
         tabBarInactiveTintColor: colors.tabIconDefault,
         headerShown: false,
         tabBarButton: HapticTab,
@@ -26,24 +32,37 @@ export default function TabLayout() {
           ...Platform.select({
             ios: {
               position: "absolute",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: -2 },
+              shadowOpacity: colorScheme === 'dark' ? 0.15 : 0.1,
+              shadowRadius: 8,
             },
             android: {
-              elevation: 8,
+              elevation: 16,
             },
             default: {},
           }),
           backgroundColor: colors.card,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          // Dynamic height based on safe area insets - prevent clipping
-          height: Platform.OS === "ios" ? 84 : Math.max(68, 60 + insets.bottom),
-          // Proper padding to avoid system navigation bar and clipping
-          paddingBottom: Platform.OS === "ios" ? Math.max(insets.bottom, 20) : Math.max(insets.bottom, 8),
-          paddingTop: 10,
+          // Dynamic height accounting for safe area
+          height: Platform.OS === "ios" ? 82 : 60 + insets.bottom,
+          // Proper padding with safe area insets
+          paddingBottom: Platform.OS === "ios" ? 20 : 0,
+          paddingTop: 6,
+          paddingHorizontal: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "500",
+          fontSize: 11,
+          fontWeight: "600",
+          letterSpacing: 0.5,
+          textTransform: "uppercase",
+          marginTop: 2,
+          marginBottom: 0,
+        },
+        tabBarIconStyle: {
+          marginTop: 0,
+          marginBottom: 2,
         },
       }}
     >
@@ -54,9 +73,13 @@ export default function TabLayout() {
           headerShown: false,
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol
-              size={focused ? 30 : 26}
+              size={24}
               name="house.fill"
               color={color}
+              style={{
+                opacity: focused ? 1 : 0.7,
+                transform: [{ scale: focused ? 1.08 : 1 }],
+              }}
             />
           ),
         }}
@@ -64,13 +87,17 @@ export default function TabLayout() {
       <Tabs.Screen
         name="_modules"
         options={{
-          title: "Module",
+          title: "Modules",
           headerShown: false,
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol
-              size={focused ? 30 : 26}
+              size={24}
               name="square.grid.2x2.fill"
               color={color}
+              style={{
+                opacity: focused ? 1 : 0.7,
+                transform: [{ scale: focused ? 1.08 : 1 }],
+              }}
             />
           ),
         }}
@@ -82,9 +109,13 @@ export default function TabLayout() {
           headerShown: false,
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol
-              size={focused ? 30 : 26}
+              size={24}
               name="person.2.fill"
               color={color}
+              style={{
+                opacity: focused ? 1 : 0.7,
+                transform: [{ scale: focused ? 1.08 : 1 }],
+              }}
             />
           ),
         }}
@@ -96,9 +127,13 @@ export default function TabLayout() {
           headerShown: false,
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol
-              size={focused ? 30 : 26}
+              size={24}
               name="person.circle.fill"
               color={color}
+              style={{
+                opacity: focused ? 1 : 0.7,
+                transform: [{ scale: focused ? 1.08 : 1 }],
+              }}
             />
           ),
         }}

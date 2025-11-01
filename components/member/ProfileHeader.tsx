@@ -148,7 +148,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ memberData, scroll
         {/* Stat Pills Row */}
         <View style={styles.statPillsRow}>
           <StatPill icon="🤝" label="Business Given" value={memberData.stats.totalReferences} />
-          <StatPill icon="🤝" label="Business Received" value={memberData.stats.totalReferences} />
+          <StatPill icon="🤝" label="Buasiness Received" value={memberData.stats.totalReferences} />
           <StatPill icon="👥" label="Visitors" value={memberData.stats.totalVisitors} />
           <StatPill icon="💬" label="Testimonials" value={memberData.stats.totalTestimonials} />
         </View>

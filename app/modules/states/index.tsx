@@ -1,416 +1,381 @@
-import { ThemedView } from '@/components/ThemedView';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { useThemeColor } from '@/hooks/useThemeColor';
-import { 
-  getStates, 
-  deleteState, 
-  State 
-} from '@/services/stateService';
-import { useRouter, useFocusEffect } from 'expo-router';
-import React, { useCallback, useEffect, useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
-  Modal,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
   View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+  Dimensions,
 } from 'react-native';
-import Toast from 'react-native-toast-message';
-import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { Colors } from '@/constants/Colors';
+import { LinearGradient } from 'expo-linear-gradient';
+import { IconSymbol } from '@/components/ui/IconSymbol';
+import { getStates, deleteState, State } from '@/services/stateService';
 
-export default function StatesListScreen() {
+const { width } = Dimensions.get('window');
+
+export default function StatesScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme];
-  const [states, setStates] = useState<State[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [stateToDelete, setStateToDelete] = useState<{ id: number; name: string } | null>(null);
-  const isInitialMount = useRef(true);
+  const colors = Colors[colorScheme ?? 'light'];
 
-  const loadStates = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const [states, setStates] = useState<State[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalStates, setTotalStates] = useState(0);
+  const [recordsPerPage] = useState(10);
+  const [sortBy, setSortBy] = useState<'name' | 'createdAt'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [search, setSearch] = useState('');
+
+  // Fetch states
+  const fetchStates = async (page: number = currentPage, refresh: boolean = false) => {
     try {
-      const response = await getStates(1, 100, '', 'name', 'asc');
+      if (refresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      const response = await getStates(page, recordsPerPage, search, sortBy, sortOrder);
+
       setStates(response.data?.states || []);
-    } catch (err) {
-      console.error('Error loading states:', err);
-      setError('Failed to load states');
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to load states',
-      });
+      setTotalPages(response.data?.totalPages || 1);
+      setTotalStates(response.data?.totalStates || 0);
+      setCurrentPage(page);
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Failed to fetch states');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    loadStates();
-  }, [loadStates]);
+  // Initial load
+  React.useEffect(() => {
+    fetchStates(1);
+  }, [sortBy, sortOrder, search]);
 
-  // Reload states when navigating back from add/edit screens
-  useFocusEffect(
-    useCallback(() => {
-      if (isInitialMount.current) {
-        isInitialMount.current = false;
-        return;
-      }
-      loadStates();
-    }, [])
-  );
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await loadStates();
-  }, [loadStates]);
+  const handleSort = (column: 'name' | 'createdAt') => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('asc');
+    }
+    setCurrentPage(1);
+  };
 
   const handleDelete = (id: number, name: string) => {
-    setStateToDelete({ id, name });
-    setDeleteModalVisible(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!stateToDelete) return;
-    
-    try {
-      await deleteState(stateToDelete.id);
-      Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: 'State deleted successfully',
-      });
-      setDeleteModalVisible(false);
-      setStateToDelete(null);
-      loadStates();
-    } catch (error: any) {
-      console.error('Error deleting state:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: error?.message || 'Failed to delete state',
-      });
-      setDeleteModalVisible(false);
-    }
-  };
-
-  const handleAddRecord = () => {
-    router.push('/modules/states/add' as any);
-  };
-
-  const handleEditRecord = (state: State) => {
-    router.push(`/modules/states/${state.id}/edit` as any);
-  };
-
-  const SkeletonCard = () => (
-    <View
-      style={[
-        styles.card,
-        { backgroundColor: colors.card, borderColor: colors.border },
-      ]}
-    >
-      <View style={styles.skelRow}>
-        <View
-          style={[
-            styles.skelBox,
-            { width: 60, backgroundColor: colors.border },
-          ]}
-        />
-        <View
-          style={[
-            styles.skelBox,
-            { width: 120, backgroundColor: colors.border },
-          ]}
-        />
-      </View>
-      <View style={[styles.skelActions]}>
-        <View
-          style={[styles.skelActionBtn, { backgroundColor: colors.border }]}
-        />
-        <View
-          style={[styles.skelActionBtn, { backgroundColor: colors.border }]}
-        />
-      </View>
-    </View>
-  );
-
-  const EmptyState = () => (
-    <View style={styles.emptyState}>
-      <Text style={[styles.emptyStateText, { color: colors.placeholder }]}>
-        No states yet
-      </Text>
-      <TouchableOpacity
-        style={[styles.createButton, { backgroundColor: colors.primary }]}
-        onPress={handleAddRecord}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="add" size={18} color="white" style={{ marginRight: 6 }} />
-        <Text style={styles.createButtonText}>Create First State</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const ErrorState = () => (
-    <View style={styles.emptyState}>
-      <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
-        Something went wrong
-      </Text>
-      <Text style={[styles.emptyStateText, { color: colors.placeholder }]}>
-        We couldn't load your states. Please try again.
-      </Text>
-      <TouchableOpacity
-        style={[styles.createButton, { backgroundColor: colors.primary }]}
-        onPress={() => loadStates()}
-      >
-        <Text style={styles.createButtonText}>Retry</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  function renderItem({ item }: { item: State }) {
-    const formattedDate = item.createdAt 
-      ? new Date(item.createdAt).toISOString().split('T')[0]
-      : 'N/A';
-
-    return (
-      <View
-        style={[
-          styles.card,
-          { 
-            backgroundColor: colors.card, 
-            borderColor: colors.border,
+    Alert.alert(
+      'Confirm Deletion',
+      `Are you sure you want to delete "${name}"? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteState(id);
+              Alert.alert('Success', 'State deleted successfully');
+              fetchStates(currentPage);
+            } catch (error: any) {
+              Alert.alert('Error', error?.message || 'Failed to delete state');
+            }
           },
-        ]}
-      >
-        {/* Record Header */}
-        <View style={styles.cardHeader}>
-          <View style={styles.nameContainer}>
-            <Text style={[styles.stateName, { color: colors.text }]}>
-              {item.name}
-            </Text>
-          </View>
-        </View>
-
-        {/* Record Meta */}
-        <Text style={[styles.dateText, { color: colors.placeholder }]}>
-          Created: {formattedDate}
-        </Text>
-
-        {/* Action Buttons */}
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => handleEditRecord(item)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="pencil" size={16} color="#F59E0B" />
-            <Text style={styles.editButtonText}>Edit State</Text>
-          </TouchableOpacity>
-          <View style={styles.bottomActionsRow}>
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={() => handleDelete(item.id, item.name)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="trash-outline" size={16} color="#EF4444" />
-              <Text style={styles.deleteButtonText}>Delete</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    );
-  }
-
-  const content = () => {
-    if (loading) {
-      return (
-        <View style={styles.listContainer}>
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-        </View>
-      );
-    }
-
-    if (error) {
-      return <ErrorState />;
-    }
-
-    return (
-      <FlatList
-        data={states}
-        renderItem={renderItem}
-        keyExtractor={(item) => String(item.id)}
-        style={styles.list}
-        contentContainerStyle={[
-          styles.listContainer,
-          states.length === 0 && { flex: 1 },
-        ]}
-        ListEmptyComponent={EmptyState}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      />
+        },
+      ]
     );
   };
 
-  const backgroundColor = useThemeColor({}, 'background');
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch (e) {
+      return 'N/A';
+    }
+  };
 
-  return (
-    <ThemedView style={[styles.container, { backgroundColor }]}>
-      {/* Header */}
-      <View style={[styles.header, { 
-        backgroundColor, 
-        borderBottomColor: colors.border 
-      }]}>
+  const renderSortButton = (column: 'name' | 'createdAt', label: string) => (
+    <TouchableOpacity
+      style={[styles.sortButton, { backgroundColor: sortBy === column ? colors.primary : colors.surface }]}
+      onPress={() => handleSort(column)}
+      activeOpacity={0.7}
+    >
+      <Text style={[styles.sortButtonText, { color: sortBy === column ? 'white' : colors.text }]}>
+        {label}
+      </Text>
+      {sortBy === column && (
+        <IconSymbol
+          name={sortOrder === 'asc' ? 'chevron.up' : 'chevron.down'}
+          size={14}
+          color="white"
+        />
+      )}
+    </TouchableOpacity>
+  );
+
+  const renderState = ({ item }: { item: State }) => (
+    <View style={[styles.stateCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={styles.stateHeader}>
+        <View style={styles.nameContainer}>
+          <IconSymbol name="map.fill" size={18} color={colors.primary} />
+          <Text style={[styles.stateName, { color: colors.text }]} numberOfLines={1}>
+            {item.name}
+          </Text>
+        </View>
+        <View style={[styles.badge, { backgroundColor: colors.primary + '20' }]}>
+          <Text style={[styles.badgeText, { color: colors.primary }]}>Active</Text>
+        </View>
+      </View>
+
+      <View style={styles.stateInfo}>
+        <View style={styles.infoRow}>
+          <IconSymbol name="calendar" size={14} color={colors.placeholder} />
+          <Text style={[styles.infoText, { color: colors.placeholder }]}>
+            Created: {formatDate(item.createdAt)}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.actionsContainer}>
         <TouchableOpacity
-          onPress={() => router.push('/(tabs)/_modules' as any)}
-          style={styles.backButton}
+          style={[styles.actionButton, { backgroundColor: colors.warning + '20' }]}
+          onPress={() => router.push(`/modules/states/${item.id}/edit` as any)}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={20} color={colors.text} />
+          <IconSymbol name="pencil" size={16} color={colors.warning} />
+          <Text style={[styles.actionButtonText, { color: colors.warning }]}>Edit</Text>
         </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
-            <Ionicons name="location" size={20} color={colors.primary} />
-          </View>
-          <View style={styles.headerTextContainer}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>States</Text>
-            <Text style={[styles.headerSubtitle, { color: colors.placeholder }]}>
-              {states.length} records
-            </Text>
-          </View>
-        </View>
-      </View>
 
-      <View style={[styles.contentContainer, { backgroundColor }]}>
-        {content()}
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: colors.error + '20' }]}
+          onPress={() => handleDelete(item.id, item.name)}
+          activeOpacity={0.7}
+        >
+          <IconSymbol name="trash" size={16} color={colors.error} />
+          <Text style={[styles.actionButtonText, { color: colors.error }]}>Delete</Text>
+        </TouchableOpacity>
       </View>
+    </View>
+  );
 
-      {/* Delete Confirmation Modal */}
-      <Modal
-        visible={deleteModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setDeleteModalVisible(false)}
+  const renderEmpty = () => (
+    <View style={styles.emptyState}>
+      <IconSymbol name="map" size={64} color={colors.placeholder} />
+      <Text style={[styles.emptyStateTitle, { color: colors.text }]}>No States Found</Text>
+      <Text style={[styles.emptyStateSubtitle, { color: colors.placeholder }]}>
+        {search ? 'Try adjusting your search' : 'Tap the + button to add your first state'}
+      </Text>
+    </View>
+  );
+
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+
+    return (
+      <View style={styles.paginationContainer}>
+        <TouchableOpacity
+          style={[styles.paginationButton, { backgroundColor: colors.surface, opacity: currentPage === 1 ? 0.5 : 1 }]}
+          onPress={() => currentPage > 1 && fetchStates(currentPage - 1)}
+          disabled={currentPage === 1}
+          activeOpacity={0.7}
+        >
+          <IconSymbol name="chevron.left" size={20} color={colors.text} />
+        </TouchableOpacity>
+
+        <Text style={[styles.paginationText, { color: colors.text }]}>
+          Page {currentPage} of {totalPages}
+        </Text>
+
+        <TouchableOpacity
+          style={[styles.paginationButton, { backgroundColor: colors.surface, opacity: currentPage === totalPages ? 0.5 : 1 }]}
+          onPress={() => currentPage < totalPages && fetchStates(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          activeOpacity={0.7}
+        >
+          <IconSymbol name="chevron.right" size={20} color={colors.text} />
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <LinearGradient
+        colors={[colors.primary, colors.primaryDark]}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>
-              Delete State
-            </Text>
-            <Text style={[styles.modalMessage, { color: colors.placeholder }]}>
-              Are you sure you want to delete "{stateToDelete?.name}"? This action cannot be undone.
-            </Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: colors.surface }]}
-                onPress={() => {
-                  setDeleteModalVisible(false);
-                  setStateToDelete(null);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.modalButtonText, { color: colors.text }]}>
-                  Cancel
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: '#EF4444' }]}
-                onPress={confirmDelete}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.modalButtonText, { color: 'white' }]}>
-                  Delete
-                </Text>
-              </TouchableOpacity>
-            </View>
+        <View style={styles.headerContent}>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/_modules' as any)} style={styles.backButton}>
+            <IconSymbol name="chevron.left" size={24} color="white" />
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>States</Text>
+            <Text style={styles.headerSubtitle}>{totalStates} total states</Text>
           </View>
+          <View style={{ width: 40 }} />
         </View>
-      </Modal>
+      </LinearGradient>
 
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <View style={[styles.searchInputContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <IconSymbol name="magnifyingglass" size={20} color={colors.placeholder} />
+          <TextInput
+            style={[styles.searchInput, { color: colors.text }]}
+            placeholder="Search states..."
+            placeholderTextColor={colors.placeholder}
+            value={search}
+            onChangeText={setSearch}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <IconSymbol name="xmark.circle.fill" size={20} color={colors.placeholder} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
 
-      {/* Floating Action Button */}
+      {/* Sort Buttons */}
+      <View style={styles.sortContainer}>
+        {renderSortButton('name', 'Name')}
+        {renderSortButton('createdAt', 'Date')}
+      </View>
+
+      {/* States List */}
+      {loading && !refreshing ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={states}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderState}
+          ListEmptyComponent={renderEmpty}
+          ListFooterComponent={renderPagination}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchStates(currentPage, true)}
+              tintColor={colors.primary}
+            />
+          }
+        />
+      )}
+
+      {/* Add Button */}
       <TouchableOpacity
-        onPress={handleAddRecord}
-        style={[styles.fab, { backgroundColor: colors.primary }]}
+        style={[styles.addButton, { backgroundColor: colors.primary }]}
+        onPress={() => router.push('/modules/states/add' as any)}
         activeOpacity={0.8}
       >
-        <Ionicons name="add" size={24} color="white" />
+        <IconSymbol name="plus" size={28} color="white" />
       </TouchableOpacity>
-    </ThemedView>
+    </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  // Header styles
   header: {
-    borderBottomWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  backButton: {
-    padding: 8,
-    borderRadius: 8,
+    paddingTop: 60,
+    paddingBottom: 30,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    flex: 1,
+    justifyContent: 'space-between',
   },
-  iconContainer: {
-    padding: 8,
-    borderRadius: 12,
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTextContainer: {
     flex: 1,
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 12,
-    marginTop: 2,
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
-  contentContainer: {
-    flex: 1,
+  searchContainer: {
     paddingHorizontal: 16,
-  },
-  list: {
-    flex: 1,
-  },
-  listContainer: {
-    paddingBottom: 100,
-    gap: 16,
     paddingTop: 16,
   },
-  // Card styles
-  card: {
-    padding: 16,
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 16,
+  },
+  sortContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  sortButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  listContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 100,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stateCard: {
+    borderRadius: 16,
+    padding: 16,
+    marginVertical: 8,
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -418,187 +383,111 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  cardHeader: {
+  stateHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    alignItems: 'center',
+    marginBottom: 12,
   },
   nameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     flex: 1,
   },
   stateName: {
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-    lineHeight: 22,
+    fontSize: 18,
+    fontWeight: 'bold',
   },
-  dateText: {
+  badge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  badgeText: {
     fontSize: 12,
-    marginTop: 4,
+    fontWeight: '600',
+  },
+  stateInfo: {
+    gap: 8,
     marginBottom: 16,
   },
-  // Action buttons
-  actionsContainer: {
-    flexDirection: 'column',
-    gap: 8,
-  },
-  editButton: {
+  infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    borderRadius: 8,
     gap: 6,
   },
-  editButtonText: {
-    color: '#F59E0B',
+  infoText: {
     fontSize: 14,
-    fontWeight: '600',
-  },
-  bottomActionsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  deleteButton: {
     flex: 1,
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 8,
     gap: 6,
+    flex: 1,
   },
-  deleteButtonText: {
-    color: '#EF4444',
-    fontSize: 14,
+  actionButtonText: {
+    fontSize: 12,
     fontWeight: '600',
   },
-  // Empty state
   emptyState: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 64,
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    paddingTop: 60,
   },
   emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    textAlign: 'center',
-    letterSpacing: 0.3,
-    marginBottom: 8,
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginTop: 20,
+    marginBottom: 10,
   },
-  emptyStateText: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  createButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  createButtonText: {
-    color: 'white',
-    fontWeight: '700',
+  emptyStateSubtitle: {
     fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
   },
-  // Skeleton styles
-  skelRow: {
+  paginationContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    paddingVertical: 20,
+    gap: 16,
   },
-  skelBox: {
-    height: 16,
-    borderRadius: 6,
-  },
-  skelActions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 14,
-  },
-  skelActionBtn: {
-    flex: 1,
+  paginationButton: {
+    width: 40,
     height: 40,
-    borderRadius: 10,
-  },
-  // Delete Modal styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
     borderRadius: 20,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    marginBottom: 12,
-    letterSpacing: 0.3,
-  },
-  modalMessage: {
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 24,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  modalButtonText: {
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  // Floating Action Button
-  fab: {
-    position: 'absolute',
-    bottom: 96,
-    right: 16,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  paginationText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  addButton: {
+    position: 'absolute',
+    bottom: 30,
+    right: 30,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 8,
   },
 });

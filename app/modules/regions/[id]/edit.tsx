@@ -1,8 +1,5 @@
-import { NavigationHeader } from '@/components/NavigationHeader';
-import { ThemedView } from '@/components/ThemedView';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { useThemeColor } from '@/hooks/useThemeColor';
 import {
   getRegionById,
   updateRegion,
@@ -22,20 +19,39 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
-import Toast from 'react-native-toast-message';
+import { LinearGradient } from 'expo-linear-gradient';
+import { IconSymbol } from '@/components/ui/IconSymbol';
 
 const ZONE_ROLE_TYPES = {
   REGIONAL_DIRECTOR: 'Regional Director',
   JOINT_SECRETARY: 'Joint Secretary',
+};
+
+const DC = {
+  bg_primary: '#0F172A',
+  bg_secondary: '#1E293B',
+  bg_tertiary: '#334155',
+  primary: '#8B5CF6',
+  success: '#10B981',
+  warning: '#F59E0B',
+  info: '#06B6D4',
+  error: '#EF4444',
+  text_primary: '#FFFFFF',
+  text_secondary: '#CBD5E1',
+  text_tertiary: '#94A3B8',
+  text_quaternary: '#64748B',
+  border: 'rgba(255, 255, 255, 0.05)',
+  border_emphasis: 'rgba(255, 255, 255, 0.1)',
 };
 
 export default function EditRegionScreen() {
@@ -43,6 +59,9 @@ export default function EditRegionScreen() {
   const { id } = useLocalSearchParams();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+
+  // Animation
+  const [fadeAnim] = useState(new Animated.Value(0));
 
   // Region details state
   const [regionName, setRegionName] = useState('');
@@ -69,6 +88,14 @@ export default function EditRegionScreen() {
     }
   }, [id]);
 
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 600,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
   const loadRegionData = async () => {
     setLoading(true);
     try {
@@ -81,11 +108,7 @@ export default function EditRegionScreen() {
       setRoles(rolesData?.roles || []);
     } catch (error) {
       console.error('Error loading region:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to load region data',
-      });
+      Alert.alert('Error', 'Failed to load region data');
       router.push('/modules/regions' as any);
     } finally {
       setLoading(false);
@@ -98,11 +121,7 @@ export default function EditRegionScreen() {
       setChapters(chaptersData);
     } catch (error) {
       console.error('Error loading chapters:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to load chapters',
-      });
+      Alert.alert('Error', 'Failed to load chapters');
     }
   };
 
@@ -118,11 +137,7 @@ export default function EditRegionScreen() {
       setSearchedMembers(members);
     } catch (error) {
       console.error('Error searching members:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to search members',
-      });
+      Alert.alert('Error', 'Failed to search members');
     } finally {
       setSearchingMembers(false);
     }
@@ -159,18 +174,10 @@ export default function EditRegionScreen() {
     setSubmitting(true);
     try {
       await updateRegion(id as string, { name: regionName.trim() });
-      Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: 'Region updated successfully',
-      });
+      Alert.alert('Success', 'Region updated successfully');
     } catch (error) {
       console.error('Error updating region:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to update region',
-      });
+      Alert.alert('Error', 'Failed to update region');
     } finally {
       setSubmitting(false);
     }
@@ -187,11 +194,7 @@ export default function EditRegionScreen() {
 
   const handleAssignRole = async () => {
     if (!selectedMember || !selectedRoleType) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Please select a member and role type',
-      });
+      Alert.alert('Error', 'Please select a member and role type');
       return;
     }
 
@@ -208,11 +211,7 @@ export default function EditRegionScreen() {
       // Assign new role
       await assignZoneRole(parseInt(id as string), selectedMember.id, selectedRoleType);
       
-      Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: 'Role assigned successfully',
-      });
+      Alert.alert('Success', 'Role assigned successfully');
 
       // Reset form
       setSelectedChapterId(null);
@@ -227,11 +226,7 @@ export default function EditRegionScreen() {
       setRoles(rolesData?.roles || []);
     } catch (error) {
       console.error('Error assigning role:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to assign role',
-      });
+      Alert.alert('Error', 'Failed to assign role');
     } finally {
       setAssigningRole(false);
     }
@@ -243,66 +238,80 @@ export default function EditRegionScreen() {
     setSearchedMembers([]);
   };
 
-  const backgroundColor = useThemeColor({}, 'background');
+  const isDark = colorScheme === 'dark';
+  const bgColor = isDark ? DC.bg_primary : colors.background;
 
   if (loading) {
     return (
-      <ThemedView style={[styles.container, { backgroundColor }]}>
-        <NavigationHeader title="Edit Region" backPath="/modules/regions" />
+      <View style={[styles.container, { backgroundColor: bgColor }]}>
+        <LinearGradient colors={['#1F2937', '#111827']} style={styles.header}>
+          <Pressable onPress={() => router.back()} style={styles.backButton}>
+            <IconSymbol name="chevron.left" size={24} color={DC.text_primary} />
+          </Pressable>
+          <Text style={styles.headerTitle}>Edit Region</Text>
+          <View style={{ width: 40 }} />
+        </LinearGradient>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.text }]}>
-            Loading region data...
-          </Text>
+          <ActivityIndicator size="large" color={DC.primary} />
+          <Text style={styles.loadingText}>Loading...</Text>
         </View>
-      </ThemedView>
+      </View>
     );
   }
 
   return (
-    <ThemedView style={[styles.container, { backgroundColor }]}>
-      <NavigationHeader title="Manage Region" backPath="/modules/regions" />
+    <View style={[styles.container, { backgroundColor: bgColor }]}>
+      <LinearGradient colors={['#1F2937', '#111827']} style={styles.header}>
+        <Pressable onPress={() => router.back()} style={styles.backButton}>
+          <IconSymbol name="chevron.left" size={24} color={DC.text_primary} />
+        </Pressable>
+        <Text style={styles.headerTitle}>Manage Region</Text>
+        <View style={styles.headerBadge}>
+          <Text style={styles.headerBadgeText}>{roles.length} ROLES</Text>
+        </View>
+      </LinearGradient>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <ScrollView
+        <Animated.ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          style={{ opacity: fadeAnim }}
         >
           {/* Region Details Section */}
-          <View style={[styles.section, { backgroundColor: colors.card }]}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionIcon}>
-                <Text style={styles.iconText}>🌍</Text>
+          <View style={[styles.card, { backgroundColor: isDark ? DC.bg_secondary : colors.card }]}>
+            <View style={styles.cardHeader}>
+              <View style={[styles.iconContainer, { backgroundColor: DC.info + '20' }]}>
+                <IconSymbol name="globe" size={20} color={DC.info} />
               </View>
-              <View style={styles.sectionTitleContainer}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              <View style={styles.cardHeaderText}>
+                <Text style={[styles.cardTitle, { color: isDark ? DC.text_primary : colors.text }]}>
                   Region Details
                 </Text>
-                <Text style={[styles.sectionSubtitle, { color: colors.placeholder }]}>
+                <Text style={[styles.cardSubtitle, { color: isDark ? DC.text_tertiary : colors.placeholder }]}>
                   Update the region's basic information
                 </Text>
               </View>
             </View>
             
             <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: colors.text }]}>
-                Region Name <Text style={styles.required}>*</Text>
+              <Text style={styles.label}>
+                REGION NAME <Text style={styles.required}>*</Text>
               </Text>
               <TextInput
                 style={[
                   styles.input,
                   {
-                    backgroundColor: colors.surface,
-                    color: colors.text,
-                    borderColor: nameError ? '#F44336' : colors.border,
+                    backgroundColor: isDark ? DC.bg_tertiary : colors.surface,
+                    color: isDark ? DC.text_primary : colors.text,
+                    borderColor: nameError ? DC.error : DC.border_emphasis,
                   },
                 ]}
                 placeholder="Enter region name"
-                placeholderTextColor={colors.placeholder}
+                placeholderTextColor={DC.text_quaternary}
                 value={regionName}
                 onChangeText={(text) => {
                   setRegionName(text);
@@ -312,99 +321,100 @@ export default function EditRegionScreen() {
                 autoCapitalize="words"
               />
               {nameError ? (
-                <View style={styles.errorContainer}>
-                  <Text style={styles.errorIcon}>⚠️</Text>
-                  <Text style={styles.errorText}>{nameError}</Text>
-                </View>
+                <Text style={styles.errorText}>{nameError}</Text>
               ) : (
-                <Text style={[styles.helperText, { color: colors.placeholder }]}>
+                <Text style={styles.helperText}>
                   This name will be used throughout the system
                 </Text>
               )}
             </View>
 
-            <TouchableOpacity
-              style={[
-                styles.primaryBtn,
-                {
-                  backgroundColor: colors.primary,
-                  opacity: submitting ? 0.7 : 1,
-                },
+            <Pressable
+              style={({ pressed }) => [
+                styles.primaryButton,
+                pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] },
+                submitting && { opacity: 0.7 },
               ]}
               onPress={handleUpdateRegion}
               disabled={submitting}
-              activeOpacity={0.7}
             >
-              {submitting ? (
-                <View style={styles.loadingBtnContainer}>
-                  <ActivityIndicator color="white" size="small" />
-                  <Text style={[styles.primaryBtnText, { marginLeft: 8 }]}>Updating...</Text>
-                </View>
-              ) : (
-                <Text style={styles.primaryBtnText}>✓ Update Region</Text>
-              )}
-            </TouchableOpacity>
+              <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.buttonGradient}>
+                {submitting ? (
+                  <>
+                    <ActivityIndicator color="white" size="small" />
+                    <Text style={styles.buttonText}>Updating...</Text>
+                  </>
+                ) : (
+                  <>
+                    <IconSymbol name="checkmark.circle.fill" size={16} color="white" />
+                    <Text style={styles.buttonText}>Update Region</Text>
+                  </>
+                )}
+              </LinearGradient>
+            </Pressable>
           </View>
 
           {/* Roles Section */}
-          <View style={[styles.section, { backgroundColor: colors.card }]}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionIcon}>
-                <Text style={styles.iconText}>👥</Text>
+          <View style={[styles.card, { backgroundColor: isDark ? DC.bg_secondary : colors.card }]}>
+            <View style={styles.cardHeader}>
+              <View style={[styles.iconContainer, { backgroundColor: DC.primary + '20' }]}>
+                <IconSymbol name="person.2.fill" size={20} color={DC.primary} />
               </View>
-              <View style={styles.sectionTitleContainer}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              <View style={styles.cardHeaderText}>
+                <Text style={[styles.cardTitle, { color: isDark ? DC.text_primary : colors.text }]}>
                   Assigned Roles
                 </Text>
-                <Text style={[styles.sectionSubtitle, { color: colors.placeholder }]}>
+                <Text style={[styles.cardSubtitle, { color: isDark ? DC.text_tertiary : colors.placeholder }]}>
                   {roles.length} {roles.length === 1 ? 'role' : 'roles'} currently assigned
                 </Text>
               </View>
             </View>
 
             {roles.length > 0 ? (
-              <View style={styles.rolesTable}>
+              <View style={styles.rolesList}>
                 {roles.map((role, index) => (
                   <View
                     key={role.assignmentId}
                     style={[
-                      styles.roleRow,
-                      { borderBottomColor: colors.border },
-                      index === roles.length - 1 && { borderBottomWidth: 0 },
+                      styles.roleItem,
+                      index < roles.length - 1 && { borderBottomWidth: 1, borderBottomColor: DC.border },
                     ]}
                   >
-                    <View style={styles.roleInfo}>
+                    <View style={[styles.roleIcon, { backgroundColor: DC.success + '15' }]}>
+                      <IconSymbol name="person.fill" size={20} color={DC.success} />
+                    </View>
+                    <View style={styles.roleContent}>
                       <View style={styles.roleBadge}>
-                        <Text style={[styles.roleType, { color: colors.primary }]}>
-                          {role.roleType}
-                        </Text>
+                        <Text style={styles.roleBadgeText}>{role.roleType}</Text>
                       </View>
-                      <Text style={[styles.memberName, { color: colors.text }]}>
+                      <Text style={[styles.roleName, { color: isDark ? DC.text_primary : colors.text }]}>
                         {role.memberName}
                       </Text>
                       {role.organizationName && (
-                        <Text style={[styles.orgName, { color: colors.placeholder }]}>
-                          🏢 {role.organizationName}
+                        <Text style={[styles.roleOrg, { color: isDark ? DC.text_tertiary : colors.placeholder }]}>
+                          {role.organizationName}
                         </Text>
                       )}
                     </View>
-                    <TouchableOpacity
-                      style={[styles.replaceBtn, { backgroundColor: colors.primary }]}
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.replaceButton,
+                        pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] },
+                      ]}
                       onPress={() => handleInitiateReplacement(role)}
-                      activeOpacity={0.7}
                     >
-                      <Text style={styles.replaceBtnText}>🔄 Replace</Text>
-                    </TouchableOpacity>
+                      <Text style={styles.replaceButtonText}>Replace</Text>
+                    </Pressable>
                   </View>
                 ))}
               </View>
             ) : (
-              <View style={styles.emptyRolesContainer}>
-                <Text style={styles.emptyRolesIcon}>💼</Text>
-                <Text style={[styles.noRolesText, { color: colors.text }]}>
+              <View style={styles.emptyState}>
+                <IconSymbol name="person.badge.plus" size={48} color={DC.text_quaternary} />
+                <Text style={[styles.emptyStateTitle, { color: isDark ? DC.text_primary : colors.text }]}>
                   No roles assigned yet
                 </Text>
-                <Text style={[styles.noRolesSubtext, { color: colors.placeholder }]}>
+                <Text style={[styles.emptyStateText, { color: isDark ? DC.text_tertiary : colors.placeholder }]}>
                   Use the form below to assign roles to members
                 </Text>
               </View>
@@ -414,41 +424,43 @@ export default function EditRegionScreen() {
           {/* Role Assignment Form */}
           <View
             style={[
-              styles.section,
-              {
-                backgroundColor: replacingRole ? '#f8f9ff' : colors.card,
-                borderColor: replacingRole ? colors.primary : colors.border,
-                borderWidth: replacingRole ? 2 : 1,
+              styles.card,
+              { backgroundColor: isDark ? DC.bg_secondary : colors.card },
+              replacingRole && {
+                borderColor: DC.primary,
+                borderWidth: 2,
               },
             ]}
           >
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionIcon}>
-                <Text style={styles.iconText}>{replacingRole ? '🔄' : '➕'}</Text>
+            <View style={styles.cardHeader}>
+              <View style={[styles.iconContainer, { backgroundColor: DC.warning + '20' }]}>
+                <IconSymbol name={replacingRole ? "arrow.triangle.2.circlepath" : "plus.circle.fill"} size={20} color={DC.warning} />
               </View>
-              <View style={[styles.sectionTitleContainer, { flex: 1 }]}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  {replacingRole ? `Replace Role: ${replacingRole.roleType}` : 'Assign New Role'}
+              <View style={[styles.cardHeaderText, { flex: 1 }]}>
+                <Text style={[styles.cardTitle, { color: isDark ? DC.text_primary : colors.text }]}>
+                  {replacingRole ? `Replace: ${replacingRole.roleType}` : 'Assign New Role'}
                 </Text>
-                <Text style={[styles.sectionSubtitle, { color: colors.placeholder }]}>
+                <Text style={[styles.cardSubtitle, { color: isDark ? DC.text_tertiary : colors.placeholder }]}>
                   {replacingRole ? 'Select a new member for this role' : 'Add a member to a leadership role'}
                 </Text>
               </View>
               {replacingRole && (
-                <TouchableOpacity 
-                  style={[styles.cancelButton, { backgroundColor: colors.surface }]}
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.cancelButton,
+                    pressed && { opacity: 0.6 },
+                  ]}
                   onPress={() => setReplacingRole(null)}
-                  activeOpacity={0.7}
                 >
-                  <Text style={[styles.cancelText, { color: colors.primary }]}>✕</Text>
-                </TouchableOpacity>
+                  <IconSymbol name="xmark" size={16} color={DC.text_secondary} />
+                </Pressable>
               )}
             </View>
 
             {replacingRole && (
-              <View style={[styles.replacingInfo, { backgroundColor: '#e8f4fd' }]}>
-                <Text style={styles.replacingInfoText}>
-                  <Text style={styles.bold}>Currently assigned to:</Text> {replacingRole.memberName}
+              <View style={styles.replacingInfo}>
+                <Text style={[styles.replacingInfoText, { color: isDark ? DC.text_secondary : '#333' }]}>
+                  Currently: {replacingRole.memberName}
                   {replacingRole.organizationName && ` (${replacingRole.organizationName})`}
                 </Text>
               </View>
@@ -456,10 +468,10 @@ export default function EditRegionScreen() {
 
             {/* Chapter Selection */}
             <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: colors.text }]}>
-                Select Chapter <Text style={styles.required}>*</Text>
+              <Text style={styles.label}>
+                SELECT CHAPTER <Text style={styles.required}>*</Text>
               </Text>
-              <View style={[styles.pickerContainer, { borderColor: colors.border }]}>
+              <View style={[styles.pickerContainer, { backgroundColor: isDark ? DC.bg_tertiary : colors.surface, borderColor: DC.border_emphasis }]}>
                 <Picker
                   selectedValue={selectedChapterId}
                   onValueChange={(value) => {
@@ -467,7 +479,8 @@ export default function EditRegionScreen() {
                     setSelectedMember(null);
                     setMemberSearchInput('');
                   }}
-                  style={[styles.picker, { color: colors.text }]}
+                  style={[styles.picker, { color: isDark ? DC.text_primary : colors.text }]}
+                  dropdownIconColor={isDark ? DC.text_secondary : colors.text}
                 >
                   <Picker.Item label="-- Select a Chapter --" value={null} />
                   {chapters.map((chapter) => (
@@ -483,72 +496,80 @@ export default function EditRegionScreen() {
 
             {/* Member Search */}
             <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: colors.text }]}>
-                Search Member <Text style={styles.required}>*</Text>
+              <Text style={styles.label}>
+                SEARCH MEMBER <Text style={styles.required}>*</Text>
               </Text>
               <View style={{ position: 'relative' }}>
                 <TextInput
                   style={[
                     styles.input,
                     {
-                      backgroundColor: !selectedChapterId ? colors.surface : 'white',
-                      color: colors.text,
-                      borderColor: colors.border,
+                      backgroundColor: isDark ? DC.bg_tertiary : colors.surface,
+                      color: isDark ? DC.text_primary : colors.text,
+                      borderColor: DC.border_emphasis,
                     },
                   ]}
-                  placeholder={
-                    selectedChapterId
-                      ? 'Type member name to search...'
-                      : 'Select a chapter first'
-                  }
-                  placeholderTextColor={colors.placeholder}
+                  placeholder={selectedChapterId ? 'Type member name...' : 'Select a chapter first'}
+                  placeholderTextColor={DC.text_quaternary}
                   value={memberSearchInput}
                   onChangeText={setMemberSearchInput}
                   editable={!!selectedChapterId}
                 />
                 {searchingMembers && (
                   <ActivityIndicator
-                    style={styles.searchingIndicator}
+                    style={styles.searchIndicator}
                     size="small"
-                    color={colors.primary}
+                    color={DC.primary}
                   />
                 )}
               </View>
 
               {searchedMembers.length > 0 && !selectedMember && (
-                <View style={[styles.searchResults, { backgroundColor: colors.card }]}>
+                <View style={[styles.searchResults, { backgroundColor: isDark ? DC.bg_tertiary : colors.card, borderColor: DC.border_emphasis }]}>
                   {searchedMembers.map((member) => (
-                    <TouchableOpacity
+                    <Pressable
                       key={member.id}
-                      style={[styles.searchResultItem, { borderBottomColor: colors.border }]}
+                      style={({ pressed }) => [
+                        styles.searchResultItem,
+                        pressed && { backgroundColor: isDark ? DC.bg_tertiary : colors.surface, opacity: 0.8 },
+                      ]}
                       onPress={() => handleSelectMember(member)}
                     >
-                      <Text style={[styles.searchResultName, { color: colors.text }]}>
+                      <Text style={[styles.searchResultName, { color: isDark ? DC.text_primary : colors.text }]}>
                         {member.memberName}
                       </Text>
-                      <Text style={[styles.searchResultOrg, { color: colors.placeholder }]}>
+                      <Text style={[styles.searchResultOrg, { color: isDark ? DC.text_tertiary : colors.placeholder }]}>
                         {member.organizationName || 'No Organization'}
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   ))}
                 </View>
               )}
 
               {selectedMember && (
-                <View style={[styles.selectedMember, { backgroundColor: '#f0f7ff' }]}>
-                  <View>
-                    <Text style={[styles.selectedMemberName, { color: '#0050b3' }]}>
+                <View style={[styles.selectedMember, { backgroundColor: DC.success + '15', borderColor: DC.success + '40' }]}>
+                  <View style={[styles.iconContainer, { backgroundColor: DC.success + '20', width: 36, height: 36 }]}>
+                    <IconSymbol name="checkmark.circle.fill" size={20} color={DC.success} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.selectedName, { color: isDark ? DC.text_primary : colors.text }]}>
                       {selectedMember.memberName}
                     </Text>
                     {selectedMember.organizationName && (
-                      <Text style={styles.selectedMemberOrg}>
+                      <Text style={[styles.selectedOrg, { color: isDark ? DC.text_tertiary : colors.placeholder }]}>
                         {selectedMember.organizationName}
                       </Text>
                     )}
                   </View>
-                  <TouchableOpacity onPress={() => setSelectedMember(null)}>
-                    <Text style={[styles.clearText, { color: colors.primary }]}>Clear</Text>
-                  </TouchableOpacity>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.clearButton,
+                      pressed && { opacity: 0.6 },
+                    ]}
+                    onPress={() => setSelectedMember(null)}
+                  >
+                    <Text style={styles.clearButtonText}>Clear</Text>
+                  </Pressable>
                 </View>
               )}
             </View>
@@ -556,15 +577,16 @@ export default function EditRegionScreen() {
             {/* Role Type Selection */}
             {!replacingRole && (
               <View style={styles.fieldGroup}>
-                <Text style={[styles.label, { color: colors.text }]}>
-                  Role Type <Text style={styles.required}>*</Text>
+                <Text style={styles.label}>
+                  ROLE TYPE <Text style={styles.required}>*</Text>
                 </Text>
-                <View style={[styles.pickerContainer, { borderColor: colors.border }]}>
+                <View style={[styles.pickerContainer, { backgroundColor: isDark ? DC.bg_tertiary : colors.surface, borderColor: DC.border_emphasis }]}>
                   <Picker
                     selectedValue={selectedRoleType}
                     onValueChange={setSelectedRoleType}
-                    style={[styles.picker, { color: colors.text }]}
+                    style={[styles.picker, { color: isDark ? DC.text_primary : colors.text }]}
                     enabled={!!selectedMember}
+                    dropdownIconColor={isDark ? DC.text_secondary : colors.text}
                   >
                     <Picker.Item label="-- Select Role Type --" value="" />
                     {Object.entries(ZONE_ROLE_TYPES).map(([key, value]) => (
@@ -575,15 +597,12 @@ export default function EditRegionScreen() {
               </View>
             )}
 
-            <TouchableOpacity
-              style={[
-                styles.assignBtn,
-                {
-                  backgroundColor: colors.primary,
-                  opacity:
-                    assigningRole || !selectedMember || !selectedRoleType || !selectedChapterId
-                      ? 0.5
-                      : 1,
+            <Pressable
+              style={({ pressed }) => [
+                styles.primaryButton,
+                pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] },
+                (assigningRole || !selectedMember || !selectedRoleType || !selectedChapterId) && {
+                  opacity: 0.5,
                 },
               ]}
               onPress={handleAssignRole}
@@ -591,24 +610,64 @@ export default function EditRegionScreen() {
                 assigningRole || !selectedMember || !selectedRoleType || !selectedChapterId
               }
             >
-              {assigningRole ? (
-                <ActivityIndicator color="white" size="small" />
-              ) : (
-                <Text style={styles.assignBtnText}>
-                  {replacingRole ? 'Replace Role' : 'Assign Role'}
-                </Text>
-              )}
-            </TouchableOpacity>
+              <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.buttonGradient}>
+                {assigningRole ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <>
+                    <IconSymbol name="person.badge.plus" size={16} color="white" />
+                    <Text style={styles.buttonText}>
+                      {replacingRole ? 'Replace Role' : 'Assign Role'}
+                    </Text>
+                  </>
+                )}
+              </LinearGradient>
+            </Pressable>
           </View>
-        </ScrollView>
+        </Animated.ScrollView>
       </KeyboardAvoidingView>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  header: {
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: DC.text_primary,
+    letterSpacing: -0.5,
+  },
+  headerBadge: {
+    backgroundColor: DC.primary + '20',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  headerBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: DC.primary,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   loadingContainer: {
     flex: 1,
@@ -617,15 +676,57 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   loadingText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
+    color: DC.text_secondary,
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    padding: 20,
     paddingBottom: 40,
+  },
+  card: {
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: DC.border,
+    marginBottom: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: { elevation: 2 },
+    }),
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+    gap: 12,
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardHeaderText: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
+    letterSpacing: -0.3,
+  },
+  cardSubtitle: {
+    fontSize: 12,
   },
   section: {
     padding: 20,
@@ -672,13 +773,15 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '600',
+    color: DC.text_quaternary,
     marginBottom: 8,
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   required: {
-    color: '#F44336',
+    color: DC.error,
   },
   input: {
     borderWidth: 1.5,
@@ -690,30 +793,45 @@ const styles = StyleSheet.create({
   },
   helperText: {
     fontSize: 12,
+    color: DC.text_quaternary,
     marginTop: 6,
-    fontWeight: '400',
-    lineHeight: 16,
-  },
-  errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-    gap: 6,
-  },
-  errorIcon: {
-    fontSize: 14,
   },
   errorText: {
     fontSize: 12,
+    color: DC.error,
     marginTop: 6,
     fontWeight: '500',
-    color: '#F44336',
-    flex: 1,
   },
   loadingBtnContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  primaryButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: DC.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+    ...Platform.select({
+      android: { elevation: 4 },
+      ios: {},
+    }),
+  },
+  buttonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+  },
+  buttonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: DC.text_primary,
   },
   primaryBtn: {
     paddingVertical: 14,
@@ -730,6 +848,40 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
   },
+  rolesList: {
+    gap: 0,
+  },
+  roleItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  roleIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  roleContent: {
+    flex: 1,
+  },
+  roleBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: DC.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  roleName: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  roleOrg: {
+    fontSize: 12,
+  },
   rolesTable: {
     marginTop: 8,
   },
@@ -745,11 +897,12 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   roleBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    backgroundColor: DC.primary + '15',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
     borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
   },
   roleType: {
     fontSize: 13,
@@ -763,6 +916,17 @@ const styles = StyleSheet.create({
   orgName: {
     fontSize: 13,
   },
+  replaceButton: {
+    backgroundColor: DC.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  replaceButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 13,
+  },
   replaceBtn: {
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -772,6 +936,20 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
     fontSize: 13,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    gap: 12,
+  },
+  emptyStateTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptyStateText: {
+    fontSize: 14,
+    textAlign: 'center',
+    maxWidth: '80%',
   },
   emptyRolesContainer: {
     alignItems: 'center',
@@ -804,16 +982,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   replacingInfo: {
+    backgroundColor: DC.info + '15',
     padding: 12,
     borderRadius: 8,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: DC.info + '40',
   },
   replacingInfoText: {
     fontSize: 14,
-    color: '#333',
-  },
-  bold: {
-    fontWeight: '700',
   },
   pickerContainer: {
     borderWidth: 1,
@@ -822,6 +999,11 @@ const styles = StyleSheet.create({
   },
   picker: {
     height: 50,
+  },
+  searchIndicator: {
+    position: 'absolute',
+    right: 16,
+    top: 14,
   },
   searchingIndicator: {
     position: 'absolute',
@@ -832,13 +1014,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e1e4e8',
     maxHeight: 240,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: { elevation: 3 },
+    }),
   },
   searchResultItem: {
     padding: 12,
@@ -857,8 +1042,17 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+  },
+  selectedName: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  selectedOrg: {
+    fontSize: 13,
   },
   selectedMemberName: {
     fontSize: 15,
@@ -868,6 +1062,15 @@ const styles = StyleSheet.create({
   selectedMemberOrg: {
     fontSize: 13,
     color: '#444',
+  },
+  clearButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  clearButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: DC.primary,
   },
   clearText: {
     fontSize: 14,

@@ -16,7 +16,7 @@ interface ProfileHeaderProps {
 }
 
 // Modern Stat Card Component
-const ModernStatCard = ({ icon, label, value, color, index }: any) => {
+const ModernStatCard = ({ icon, label, value, color, index, colors }: any) => {
   const [scaleAnim] = useState(new Animated.Value(0.8));
   const [fadeAnim] = useState(new Animated.Value(0));
 
@@ -43,6 +43,8 @@ const ModernStatCard = ({ icon, label, value, color, index }: any) => {
       style={[
         styles.statCard,
         {
+          backgroundColor: colors.card,
+          borderColor: colors.border,
           opacity: fadeAnim,
           transform: [{ scale: scaleAnim }],
         },
@@ -51,8 +53,8 @@ const ModernStatCard = ({ icon, label, value, color, index }: any) => {
       <View style={[styles.statIconContainer, { backgroundColor: color + '20' }]}>
         <ThemedText style={styles.statIcon}>{icon}</ThemedText>
       </View>
-      <ThemedText style={styles.statValue}>{value}</ThemedText>
-      <ThemedText style={styles.statLabel}>{label}</ThemedText>
+      <ThemedText style={[styles.statValue, { color: colors.text }]}>{value}</ThemedText>
+      <ThemedText style={[styles.statLabel, { color: colors.placeholder }]}>{label}</ThemedText>
     </Animated.View>
   );
 };
@@ -174,16 +176,17 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ member, onBack }) 
     },
   ];
 
+  const coverGradientColors =
+    colorScheme === 'dark'
+      ? ['rgba(15, 23, 42, 0)', 'rgba(15, 23, 42, 0.65)', colors.background]
+      : ['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0.45)', colors.background];
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Cover Photo with Gradient Overlay */}
       <View style={styles.coverContainer}>
         <Image source={{ uri: coverPhotoUrl }} style={styles.coverImage} resizeMode="cover" />
-        <LinearGradient
-          colors={['rgba(15, 23, 42, 0)', 'rgba(15, 23, 42, 0.8)', 'rgba(15, 23, 42, 0.95)']}
-          locations={[0, 0.6, 1]}
-          style={styles.coverGradient}
-        />
+        <LinearGradient colors={coverGradientColors} locations={[0, 0.7, 1]} style={styles.coverGradient} />
       </View>
 
       <Animated.View
@@ -202,18 +205,18 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ member, onBack }) 
             onPress={onBack}
           >
             <View style={styles.backButtonInner}>
-              <ThemedText style={styles.backIcon}>←</ThemedText>
+              <ThemedText style={styles.backIcon}>×</ThemedText>
             </View>
           </Pressable>
         )}
 
         {/* Profile Info Card */}
-        <View style={styles.profileCard}>
+        <View style={[styles.profileCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           {/* Avatar with Ring */}
           <View style={styles.avatarSection}>
             <View style={styles.avatarRing}>
               <LinearGradient colors={['#8B5CF6', '#7C3AED', '#6D28D9']} style={styles.avatarGradient}>
-                <View style={styles.avatarInner}>
+                <View style={[styles.avatarInner, { backgroundColor: colors.card }]}>
                   <Image source={{ uri: avatarUrl }} style={styles.avatar} resizeMode="cover" />
                 </View>
               </LinearGradient>
@@ -227,7 +230,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ member, onBack }) 
           <View style={styles.infoSection}>
             {/* Name and Handle */}
             <View style={styles.nameRow}>
-              <ThemedText style={styles.name} numberOfLines={1}>
+              <ThemedText style={[styles.name, { color: colors.text }]} numberOfLines={1}>
                 {member.name}
               </ThemedText>
               {member.handle && (
@@ -241,14 +244,14 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ member, onBack }) 
             <View style={styles.metaRow}>
               <View style={styles.metaItem}>
                 <ThemedText style={styles.metaIcon}>💼</ThemedText>
-                <ThemedText style={styles.metaText} numberOfLines={1}>
+                <ThemedText style={[styles.metaText, { color: colors.placeholder }]} numberOfLines={1}>
                   {member.title}
                 </ThemedText>
               </View>
-              <View style={styles.metaDivider} />
+              <View style={[styles.metaDivider, { backgroundColor: colors.border }]} />
               <View style={styles.metaItem}>
                 <ThemedText style={styles.metaIcon}>📍</ThemedText>
-                <ThemedText style={styles.metaText} numberOfLines={1}>
+                <ThemedText style={[styles.metaText, { color: colors.placeholder }]} numberOfLines={1}>
                   {member.location}
                 </ThemedText>
               </View>
@@ -257,7 +260,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ member, onBack }) 
             {/* Bio */}
             {member.bio && (
               <View style={styles.bioContainer}>
-                <ThemedText style={styles.bio} numberOfLines={3}>
+                <ThemedText style={[styles.bio, { color: colors.placeholder }]} numberOfLines={3}>
                   {member.bio}
                 </ThemedText>
               </View>
@@ -302,7 +305,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ member, onBack }) 
 
         {/* Stats Grid */}
         <View style={styles.statsSection}>
-          <ThemedText style={styles.statsTitle}>Performance Overview</ThemedText>
+          <ThemedText style={[styles.statsTitle, { color: colors.text }]}>Performance Overview</ThemedText>
           <View style={styles.statsGrid}>
             {stats.map((stat, index) => (
               <ModernStatCard
@@ -312,6 +315,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ member, onBack }) 
                 value={stat.value}
                 color={stat.color}
                 index={index}
+                colors={colors}
               />
             ))}
           </View>
@@ -327,9 +331,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F172A',
   },
   coverContainer: {
-    height: 200,
+    height: 320,
     width: '100%',
     position: 'relative',
+    marginTop: 0,
   },
   coverImage: {
     width: '100%',
@@ -343,7 +348,7 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   content: {
-    marginTop: -60,
+    marginTop: -120,
     paddingHorizontal: 20,
     paddingBottom: 24,
     position: 'relative',
@@ -351,7 +356,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: -140,
+    top: -160,
     left: 20,
     zIndex: 20,
   },
@@ -377,7 +382,8 @@ const styles = StyleSheet.create({
     }),
   },
   backIcon: {
-    fontSize: 24,
+    fontSize: 32,
+    fontWeight: '300',
     color: '#FFFFFF',
   },
   profileCard: {

@@ -11,6 +11,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native";
 
 interface NavigationHeaderProps {
@@ -19,6 +21,8 @@ interface NavigationHeaderProps {
   rightComponent?: React.ReactNode;
   onBackPress?: () => void;
   backPath?: string; // Explicit path to navigate back to
+  variant?: "default" | "overlay";
+  style?: StyleProp<ViewStyle>;
 }
 
 export function NavigationHeader({
@@ -27,6 +31,8 @@ export function NavigationHeader({
   rightComponent,
   onBackPress,
   backPath,
+  variant = "default",
+  style,
 }: NavigationHeaderProps) {
   const router = useRouter();
   const colorScheme = useColorScheme();
@@ -34,6 +40,8 @@ export function NavigationHeader({
 
   const backgroundColor = useThemeColor({}, "background");
   const textColor = useThemeColor({}, "text");
+  const isOverlay = variant === "overlay";
+  const statusBarBackground = isOverlay ? "transparent" : backgroundColor;
 
   const handleBackPress = () => {
     if (onBackPress) {
@@ -51,12 +59,19 @@ export function NavigationHeader({
     <View
       style={[
         styles.container,
+        isOverlay && styles.overlayContainer,
         { backgroundColor, borderBottomColor: colors.border },
+        isOverlay && {
+          backgroundColor: "transparent",
+          borderBottomColor: "transparent",
+        },
+        style,
       ]}
     >
       <StatusBar
         barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
-        backgroundColor={backgroundColor}
+        backgroundColor={statusBarBackground}
+        translucent={isOverlay}
       />
 
       <View style={styles.content}>
@@ -128,6 +143,13 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+  },
+  overlayContainer: {
+    borderBottomWidth: 0,
+    elevation: 0,
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
   },
   content: {
     flexDirection: "row",

@@ -34,6 +34,9 @@ const MAPPING = {
   'xmark.circle.fill': 'cancel',
   'checkmark': 'check',
   'checkmark.circle': 'check-circle',
+  'checkmark.circle.fill': 'check-circle',
+  'plus.circle.fill': 'add-circle',
+  'arrow.triangle.2.circlepath': 'sync',
   'ellipsis': 'more-horiz',
   
   // People & Communication

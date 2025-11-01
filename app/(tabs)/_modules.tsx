@@ -17,6 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/contexts/UserRoleContext';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 const COLORS = {
   bg_primary: '#0F172A',
@@ -264,6 +266,8 @@ export default function ModulesScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { hasChapterAccess } = useUserRole();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme];
   const insets = useSafeAreaInsets();
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [cardWidth, setCardWidth] = useState<number>(() => {
@@ -296,10 +300,8 @@ export default function ModulesScreen() {
     const subscription = Dimensions.addEventListener('change', handleDimensionsChange);
 
     return () => {
-      if (typeof subscription?.remove === 'function') {
+      if (subscription && typeof subscription.remove === 'function') {
         subscription.remove();
-      } else {
-        Dimensions.removeEventListener('change', handleDimensionsChange);
       }
     };
   }, []);
@@ -377,9 +379,9 @@ export default function ModulesScreen() {
   }, [displayedModules]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <LinearGradient
-        colors={COLORS.gradient_header}
+        colors={colorScheme === 'dark' ? ['#1F2937', '#111827'] : [colors.primary, colors.primaryDark]}
         style={[
           styles.header,
           { paddingTop: insets.top + 60 },
@@ -387,13 +389,13 @@ export default function ModulesScreen() {
       >
         <View style={styles.headerContent}>
           <View style={styles.headerTextGroup}>
-            <Text style={styles.headerTitle}>Modules</Text>
-            <Text style={styles.headerSubtitle}>
+            <Text style={[styles.headerTitle, { color: '#FFFFFF' }]}>Modules</Text>
+            <Text style={[styles.headerSubtitle, { color: 'rgba(255, 255, 255, 0.85)' }]}>
               Manage and access all available modules
             </Text>
           </View>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>
+          <View style={[styles.badge, { backgroundColor: 'rgba(255, 255, 255, 0.2)', borderColor: 'rgba(255, 255, 255, 0.3)' }]}>
+            <Text style={[styles.badgeText, { color: '#FFFFFF' }]}>
               {displayedModules.length} ACTIVE
             </Text>
           </View>
@@ -417,7 +419,7 @@ export default function ModulesScreen() {
           ]}
         >
           <View style={styles.filterSection}>
-            <Text style={styles.sectionLabel}>Filter by category</Text>
+            <Text style={[styles.sectionLabel, { color: colors.placeholder }]}>Filter by category</Text>
             <View style={styles.filterRow}>
               {categories.map(category => {
                 const isActive = category === selectedCategory;
@@ -427,14 +429,17 @@ export default function ModulesScreen() {
                     onPress={() => setSelectedCategory(category)}
                     style={({ pressed }) => [
                       styles.filterChip,
-                      isActive && styles.filterChipActive,
+                      { 
+                        backgroundColor: isActive ? colors.primary + '20' : colors.card,
+                        borderColor: isActive ? colors.primary : colors.border 
+                      },
                       pressed && styles.filterChipPressed,
                     ]}
                   >
                     <Text
                       style={[
                         styles.filterChipText,
-                        isActive && styles.filterChipTextActive,
+                        { color: isActive ? colors.text : colors.placeholder },
                       ]}
                     >
                       {category}
@@ -448,8 +453,8 @@ export default function ModulesScreen() {
           {Object.entries(groupedModules).map(([category, modulesInCategory]) => (
             <View key={category} style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{category}</Text>
-                <Text style={styles.sectionMeta}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{category}</Text>
+                <Text style={[styles.sectionMeta, { color: colors.placeholder }]}>
                   {modulesInCategory.length} MODULES
                 </Text>
               </View>
@@ -461,6 +466,7 @@ export default function ModulesScreen() {
                     index={moduleIndexMap[module.id] ?? 0}
                     width={cardWidth}
                     onPress={() => router.push(module.route as never)}
+                    colors={colors}
                   />
                 ))}
               </View>
@@ -640,9 +646,10 @@ interface ModuleCardProps {
   index: number;
   width: number;
   onPress: () => void;
+  colors: typeof Colors.light | typeof Colors.dark;
 }
 
-const ModuleCard: React.FC<ModuleCardProps> = ({ item, index, width, onPress }) => {
+const ModuleCard: React.FC<ModuleCardProps> = ({ item, index, width, onPress, colors }) => {
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -675,17 +682,18 @@ const ModuleCard: React.FC<ModuleCardProps> = ({ item, index, width, onPress }) 
         onPress={onPress}
         style={({ pressed }) => [
           styles.gridCard,
+          { backgroundColor: colors.card, borderColor: colors.border },
           pressed && styles.gridCardPressed,
         ]}
       >
         <View style={[styles.gridIconContainer, { backgroundColor: `${item.color}20` }]}>
           <IconSymbol name={item.icon as any} size={20} color={item.color} />
         </View>
-        <Text style={styles.gridModuleName} numberOfLines={2}>
+        <Text style={[styles.gridModuleName, { color: colors.text }]} numberOfLines={2}>
           {item.name}
         </Text>
         {item.description ? (
-          <Text style={styles.gridModuleDescription} numberOfLines={2}>
+          <Text style={[styles.gridModuleDescription, { color: colors.placeholder }]} numberOfLines={2}>
             {item.description}
           </Text>
         ) : null}
